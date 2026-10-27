@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+/* =========================================================
+   G1 CONSTRUCTICON x UNDERTALE/DELTARUNE THEME
+   Palette: Deep Purple (#10002b, #240046) & Constructicon Green (#39ff14, #00ff66)
+   ========================================================= */
+
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #0b001a;
+    background-image:
+            linear-gradient(rgba(11, 0, 26, 0.88), rgba(11, 0, 26, 0.88)),
+            url('../media/syusa.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #e0aaff;
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+div {
+    box-sizing: border-box;
+}
+
+/* --- Заголовки (стиль диалоговых окон Deltarune) --- */
+h1, h2, h3 {
+    font-family: 'Press Start 2P', monospace;
+    color: #39ff14; /* Конструктикон Грин */
+    text-shadow: 2px 2px 0px #3c096c;
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+h1 { font-size: 18px; }
+h2 { font-size: 15px; }
+h3 { font-size: 12px; color: #c77dff; }
+
+/* --- Пиксельные кнопки с Конструктикон-тенью --- */
+button {
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    background-color: #10002b;
+    color: #39ff14;
+    border: 2px solid #7b2cbf;
+    padding: 4px 12px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0px #39ff14;
+    transition: transform 0.05s, background-color 0.1s, border-color 0.1s;
+    text-transform: uppercase;
+    margin: 4px;
+}
+
+button:hover {
+    background-color: #39ff14;
+    color: #10002b;
+    border-color: #39ff14;
+    box-shadow: 3px 3px 0px #7b2cbf;
+    transform: translate(-1px, -1px);
+}
+
+button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #7b2cbf;
+}
+
+/* --- Инпуты, Селекты и Поля формы --- */
+input, select, textarea {
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    background-color: #1a0033;
+    color: #00ff66;
+    border: 2px solid #5a189a;
+    padding: 4px 8px;
+    margin: 4px 0;
+    outline: none;
+    box-shadow: inset 2px 2px 0px #000;
+}
+
+input:focus, select:focus {
+    border-color: #39ff14;
+    background-color: #240046;
+}
+
+/* Хак для чекбоксов */
+input[type="checkbox"] {
+    accent-color: #39ff14;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Шапка, Формы и Футер --- */
+header, footer, form, .form-container {
+    border: 3px solid #7b2cbf;
+    background: rgba(16, 0, 43, 0.93);
+    padding: 16px;
+    margin: 15px auto;
+    max-width: 1100px;
+    box-shadow: 5px 5px 0px #39ff14;
+}
+
+footer {
+    font-size: 16px;
+    color: #9d4edd;
+    text-align: center;
+    box-shadow: 5px 5px 0px #5a189a;
+}
+
+/* --- КОМПАКТНАЯ УБОРИСТАЯ ТАБЛИЦА --- */
+/* Обертка для таблицы на случай узких экранов */
+div:has(> table) {
+    overflow-x: auto;
+    max-width: 100%;
+    margin: 15px auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(16, 0, 43, 0.95);
+    border: 3px solid #7b2cbf;
+    box-shadow: 6px 6px 0px #39ff14;
+    table-layout: auto;
+}
+
+th, td {
+    border: 1px solid #3c096c;
+    padding: 4px 6px;
+    text-align: left;
+    font-size: 16px;
+    line-height: 1.1;
+    /* Разрешаем перенос текста, чтобы таблица сжалась по ширине */
+    white-space: normal;
+    word-break: break-word;
+    max-width: 95px;
+}
+
+th {
+    background-color: #240046;
+    color: #39ff14;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 6px 4px;
+    border-bottom: 2px solid #7b2cbf;
+}
+
+/* Подсветка строки при наведении в стиле Undertale */
+tr:hover {
+    background-color: rgba(57, 255, 20, 0.12);
+}
+
+/* Первые два столбца (№ и Название) делаем чуть убористее */
+td:nth-child(1) {
+    color: #c77dff;
+    font-weight: bold;
+    width: 25px;
+    text-align: center;
+}
+
+/* Системные уведомления Toastify под стиль лабы */
+.Toastify__toast {
+    font-family: 'VT323', monospace !important;
+    font-size: 18px !important;
+    background-color: #10002b !important;
+    color: #39ff14 !important;
+    border: 2px solid #7b2cbf !important;
+    box-shadow: 4px 4px 0px #39ff14 !important;
+}

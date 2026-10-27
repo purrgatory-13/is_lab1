@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lab_postgres
+    environment:
+      POSTGRES_DB: studs
+      POSTGRES_USER: s467092
+      POSTGRES_PASSWORD: 8sdIeogVuJzPkbIR
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  wildfly:
+    image: quay.io/wildfly/wildfly:latest
+    container_name: lab_wildfly
+    ports:
+      - "8080:8080"
+      - "9990:9990"
+    volumes:
+      - ./build/libs:/opt/jboss/wildfly/standalone/deployments
+      - ./standalone.xml:/opt/jboss/wildfly/standalone/configuration/standalone.xml
+      - ./postgresql-42.6.0.jar:/opt/jboss/wildfly/modules/system/layers/base/org/postgresql/main/postgresql-42.6.0.jar
+      - ./module.xml:/opt/jboss/wildfly/modules/system/layers/base/org/postgresql/main/module.xml
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

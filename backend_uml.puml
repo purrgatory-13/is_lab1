@@ -1,0 +1,327 @@
+@startuml
+class org.example.entities.Coordinates {
+- double x
+- Float y
++ Float getY()
++ void setY(Float)
++ double getX()
++ void setX(double)
+}
+
+
+enum org.example.entities.Color {
++  GREEN
++  RED
++  BLACK
++  BLUE
++  BROWN
+}
+
+class org.example.UserService {
+- UserDao userDao
++ void register(User)
++ User login(String,String)
+}
+
+
+class org.example.CorsFilter {
++ void filter(ContainerRequestContext,ContainerResponseContext)
+}
+
+class org.example.MusicBandService {
+~ MusicBandDao dao
++ void create(MusicBand)
++ void update(MusicBand)
++ void updateBandData(int,MusicBand)
++ MusicBand findById(int)
++ List<MusicBand> findAll()
++ void remove(int)
++ List<MusicBand> findNameSubstr(String)
++ List<MusicBand> frontManLowerThan(int)
++ Long countByAlbumCount(int)
++ void addNewSingle(int)
++ void removeMember(int)
+}
+
+
+class org.example.entities.Album {
+- String name
+- int tracks
+- long sales
+- int id
++ String getName()
++ void setName(String)
++ int getTracks()
++ void setTracks(int)
++ long getSales()
++ void setSales(long)
++ int getId()
++ void setId(int)
+}
+
+
+class org.example.entities.MusicBand {
+- int id
+- String name
+- Coordinates coordinates
+- java.util.Date creationDate
+- MusicGenre genre
+- Long numberOfParticipants
+- Integer singlesCount
+- String description
+- Album bestAlbum
+- Integer albumsCount
+- java.time.ZonedDateTime establishmentDate
+- Person frontMan
+# void onCreate()
++ int getId()
++ void setId(int)
++ String getName()
++ void setName(String)
++ Coordinates getCoordinates()
++ void setCoordinates(Coordinates)
++ Date getCreationDate()
++ void setCreationDate(Date)
++ MusicGenre getGenre()
++ void setGenre(MusicGenre)
++ Long getNumberOfParticipants()
++ void setNumberOfParticipants(Long)
++ Integer getSinglesCount()
++ void setSinglesCount(Integer)
++ String getDescription()
++ void setDescription(String)
++ Album getBestAlbum()
++ void setBestAlbum(Album)
++ Integer getAlbumsCount()
++ void setAlbumsCount(Integer)
++ ZonedDateTime getEstablishmentDate()
++ void setEstablishmentDate(ZonedDateTime)
++ Person getFrontMan()
++ void setFrontMan(Person)
+}
+
+
+class org.example.UserDao {
+- EntityManager em
++ void create(User)
++ User findByUsername(String)
+}
+
+
+class org.example.AlbumService {
+~ AlbumDao dao
++ void create(Album)
++ void update(Album)
++ Album findById(int)
++ List<Album> findAll()
++ void remove(int)
++ List<Album> findNameSubstr(String)
+}
+
+
+class org.example.LocationService {
+~ LocationDao dao
++ void create(Location)
++ void update(Location)
++ Location findById(int)
++ List<Location> findAll()
++ void remove(int)
++ List<Location> findNameSubstr(String)
+}
+
+
+class org.example.PersonResource {
+- PersonService mbs
++ List<Person> getList()
++ Response getById(int)
++ List<Person> findSubstr(String)
++ Response newPerson(Person)
++ Response updPerson(int,Person)
++ Response deletePerson(int)
+}
+
+
+enum org.example.entities.MusicGenre {
++  ROCK
++  PROGRESSIVE_ROCK
++  RAP
++  POST_ROCK
+}
+
+class org.example.PersonDao {
+~ EntityManager em
++ void create(Person)
++ void update(Person)
++ Person findById(int)
++ List<Person> findAll()
++ void remove(int)
++ List<Person> findNameSubstr(String)
++ boolean isReferencedByBands(int)
+}
+
+
+class org.example.AlbumResource {
+- AlbumService service
++ List<Album> getList()
++ Album getById(int)
++ List<Album> findSubstr(String)
++ void newAlbum(Album)
++ Response updAlbum(int,Album)
++ Response deleteAlbum(int)
+}
+
+
+class org.example.UserResource {
+- UserService userService
++ Response register(User)
++ Response login(User)
++ Response logout()
+}
+
+
+class org.example.entities.Location {
+- Long x
+- float y
+- int z
+- String name
+- int id
++ Long getX()
++ void setX(Long)
++ float getY()
++ void setY(float)
++ int getZ()
++ void setZ(int)
++ String getName()
++ void setName(String)
++ int getId()
++ void setId(int)
+}
+
+
+class org.example.RestApplication {
++ Set<Class<?>> getClasses()
+}
+
+class org.example.MusicBandResource {
+- MusicBandService mbs
++ List<MusicBand> getList()
++ Response getById(int)
++ Response createBand(MusicBand)
++ Response updateBand(int,MusicBand)
++ Response deleteBand(int)
++ Response addSingle(int)
++ Response removeMember(int)
++ List<MusicBand> findSubstr(String)
++ List<MusicBand> getFrontManLowerThan(int)
+}
+
+
+class org.example.LocationResource {
+- LocationService service
++ List<Location> getList()
++ Location getById(int)
++ List<Location> findSubstr(String)
++ void newLocation(Location)
++ Response updLocation(int,Location)
++ Response deleteLocation(int)
+}
+
+
+class org.example.LocationDao {
+~ EntityManager em
++ void create(Location)
++ void update(Location)
++ Location findById(int)
++ List<Location> findAll()
++ void remove(int)
++ boolean isReferencedByPersons(int)
++ List<Location> findNameSubstr(String)
+}
+
+
+class org.example.PersonService {
+~ PersonDao dao
++ void create(Person)
++ void update(Person)
++ Person findById(int)
++ List<Person> findAll()
++ void remove(int)
++ List<Person> findNameSubstr(String)
+}
+
+
+class org.example.MusicBandDao {
+~ EntityManager em
++ void create(MusicBand)
++ void update(MusicBand)
++ void updateBandData(int,MusicBand)
++ MusicBand findById(int)
++ List<MusicBand> findAll()
++ void remove(int)
++ List<MusicBand> findNameSubstr(String)
++ void incrementSingle(int)
++ void decrementMember(int)
++ List<MusicBand> frontManLowerThan(int)
++ Long countByAlbumsCount(int)
+}
+
+
+class org.example.Main {
++ {static} void main(String[])
+}
+
+class org.example.entities.User {
+- int id
+- String username
+- String password
++ int getId()
++ void setId(int)
++ String getUsername()
++ void setUsername(String)
++ String getPassword()
++ void setPassword(String)
+}
+
+
+class org.example.entities.Person {
+- String name
+- Color eyeColor
+- Color hairColor
+- Location location
+- long height
+- String passportID
+- int id
++ String getName()
++ void setName(String)
++ Color getEyeColor()
++ void setEyeColor(Color)
++ Color getHairColor()
++ void setHairColor(Color)
++ Location getLocation()
++ void setLocation(Location)
++ long getHeight()
++ void setHeight(long)
++ String getPassportID()
++ void setPassportID(String)
++ int getId()
++ void setId(int)
+}
+
+
+class org.example.AlbumDao {
+~ EntityManager em
++ void create(Album)
++ void update(Album)
++ Album findById(int)
++ List<Album> findAll()
++ void remove(int)
++ boolean isReferencedByBands(int)
++ List<Album> findNameSubstr(String)
+}
+
+
+
+
+jakarta.ws.rs.container.ContainerResponseFilter <|.. org.example.CorsFilter
+jakarta.ws.rs.core.Application <|-- org.example.RestApplication
+@enduml
