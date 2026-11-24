@@ -73,9 +73,28 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
 
     useEffect(() => {
         fetchBands();
-        const interval = setInterval(fetchBands, 3000);
-        return () => clearInterval(interval);
-    }, [fetchBands]);
+
+        const eventSource = new EventSource('http://localhost:8080/is_lab1/events');
+
+        eventSource.addEventListener('entity-changed', (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.entity === 'band' && !isSearching) {
+                    fetchBands();
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга SSE-события:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.warn('SSE соединение прервано, браузер переподключится:', err);
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [fetchBands, isSearching]);
 
     const handleSearchById = (e) => {
         e.preventDefault();

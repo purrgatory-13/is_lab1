@@ -53,9 +53,28 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
 
     useEffect(() => {
         fetchAlbums();
-        const interval = setInterval(fetchAlbums, 3000);
-        return () => clearInterval(interval);
-    }, [fetchAlbums]);
+
+        const eventSource = new EventSource('http://localhost:8080/is_lab1/events');
+
+        eventSource.addEventListener('entity-changed', (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.entity === 'album' && !isSearching) {
+                    fetchAlbums();
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга SSE-события:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.warn('SSE соединение прервано, браузер переподключится:', err);
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [fetchAlbums, isSearching]);
 
     const handleSearchById = (e) => {
         e.preventDefault();

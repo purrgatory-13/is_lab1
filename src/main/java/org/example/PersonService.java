@@ -13,12 +13,17 @@ public class PersonService {
     @Inject
     PersonDao dao;
 
+    @Inject
+    EventBroadcaster eventBroadcaster;
+
     public void create(Person mb) {
         dao.create(mb);
+        eventBroadcaster.notifyChange("person", "create");
     }
 
     public void update(Person mb) {
         dao.update(mb);
+        eventBroadcaster.notifyChange("person", "update");
     }
 
     public Person findById(int id) {
@@ -42,6 +47,7 @@ public class PersonService {
             throw new IllegalStateException("Нельзя удалить музыканта, так как он является фронтменом музыкальной группы");
         }
         dao.remove(id);
+        eventBroadcaster.notifyChange("person", "delete");
     }
 
     public List<Person> findPage(int page, int size) {

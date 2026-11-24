@@ -13,12 +13,17 @@ public class AlbumService {
     @Inject
     AlbumDao dao;
 
+    @Inject
+    EventBroadcaster eventBroadcaster;
+
     public void create(Album a) {
         dao.create(a);
+        eventBroadcaster.notifyChange("album", "create");
     }
 
     public void update(Album a) {
         dao.update(a);
+        eventBroadcaster.notifyChange("album", "update");
     }
 
     public Album findById(int id) {
@@ -38,6 +43,7 @@ public class AlbumService {
             throw new IllegalStateException("Нельзя удалить альбом, тк на него ссылается музыкальная группа");
         }
         dao.remove(id);
+        eventBroadcaster.notifyChange("album", "delete");
     }
 
     public List<Album> findNameSubstr(String str) {

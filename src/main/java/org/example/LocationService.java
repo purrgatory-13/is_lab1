@@ -13,12 +13,17 @@ public class LocationService {
     @Inject
     LocationDao dao;
 
+    @Inject
+    EventBroadcaster eventBroadcaster;
+
     public void create(Location l) {
         dao.create(l);
+        eventBroadcaster.notifyChange("location", "create");
     }
 
     public void update(Location l) {
         dao.update(l);
+        eventBroadcaster.notifyChange("location", "update");
     }
 
     public Location findById(int id) {
@@ -38,6 +43,7 @@ public class LocationService {
             throw new IllegalStateException("Нельзя удалить локацию, так как на нее ссылается музыкант");
         }
         dao.remove(id);
+        eventBroadcaster.notifyChange("location", "delete");
     }
 
     public List<Location> findNameSubstr(String str) {

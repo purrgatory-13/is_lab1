@@ -53,9 +53,28 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
 
     useEffect(() => {
         fetchPersons();
-        const interval = setInterval(fetchPersons, 3000);
-        return () => clearInterval(interval);
-    }, [fetchPersons]);
+
+        const eventSource = new EventSource('http://localhost:8080/is_lab1/events');
+
+        eventSource.addEventListener('entity-changed', (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.entity === 'person' && !isSearching) {
+                    fetchPersons();
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга SSE-события:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.warn('SSE соединение прервано, браузер переподключится:', err);
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [fetchPersons, isSearching]);
 
     const handleSearchById = (e) => {
         e.preventDefault();

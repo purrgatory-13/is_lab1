@@ -7,26 +7,30 @@ import org.example.entities.MusicBand;
 
 import java.util.List;
 
-
 @ApplicationScoped
 @Transactional
 public class MusicBandService {
     @Inject
     MusicBandDao dao;
 
-    public void create(MusicBand mb){
+    @Inject
+    EventBroadcaster eventBroadcaster;
+
+    public void create(MusicBand mb) {
         dao.create(mb);
+        eventBroadcaster.notifyChange("band", "create");
     }
 
-    public void update(MusicBand mb){
+    public void update(MusicBand mb) {
         dao.update(mb);
+        eventBroadcaster.notifyChange("band", "update");
     }
 
-    public MusicBand findById(int id){
+    public MusicBand findById(int id) {
         return dao.findById(id);
     }
 
-    public List<MusicBand> findAll(){
+    public List<MusicBand> findAll() {
         return dao.findAll();
     }
 
@@ -37,45 +41,42 @@ public class MusicBandService {
         }
 
         dao.remove(id);
+        eventBroadcaster.notifyChange("band", "delete");
     }
 
-
-    //Вернуть массив объектов, значение поля name которых содержит заданную подстроку.
-    public List<MusicBand> findNameSubstr(String str){
+    public List<MusicBand> findNameSubstr(String str) {
         return dao.findNameSubstr(str);
     }
 
-    //Вернуть массив объектов, значение поля frontMan которых меньше заданного.
-    //(считаем что речь про айдишку)
-    public List<MusicBand> frontManLowerThan(int number){
+    public List<MusicBand> frontManLowerThan(int number) {
         return dao.frontManLowerThan(number);
     }
 
-    //Вернуть количество объектов, значение поля albumsCount которых равно заданному.
-    public Long countByAlbumCount(int count){
+    public Long countByAlbumCount(int count) {
         return dao.countByAlbumsCount(count);
     }
 
+    public void addNewSingle(int id) {
+        MusicBand band = dao.findById(id);
+        if (band == null) {
+            throw new IllegalArgumentException("Музыкальная группа не найдена");
+        }
 
-    //Добавить новый сингл указанной группе.
-    public void addNewSingle(int id){
-        MusicBand band = dao.findById(id);
-        if (band == null) {
-            throw new IllegalArgumentException("Музыкальная группа не найдена");
-        }
-        
         dao.incrementSingle(id);
+        eventBroadcaster.notifyChange("band", "update");
     }
-    //Удалить из группы участника.
-    public void removeMember(int id){
+
+    public void removeMember(int id) {
         MusicBand band = dao.findById(id);
         if (band == null) {
             throw new IllegalArgumentException("Музыкальная группа не найдена");
         }
-        if (band.getNumberOfParticipants() <= 1) {
+        Long participants = band.getNumberOfParticipants();
+        if (participants == null || participants <= 1) {
             throw new IllegalStateException("В группе должен быть хотя бы один участник");
         }
         dao.decrementMember(id);
+        eventBroadcaster.notifyChange("band", "update");
     }
 
     public List<MusicBand> findPage(int page, int size) {
