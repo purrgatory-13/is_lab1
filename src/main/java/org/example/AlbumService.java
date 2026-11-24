@@ -43,4 +43,20 @@ public class AlbumService {
     public List<Album> findNameSubstr(String str) {
         return dao.findNameSubstr(str);
     }
+
+    public List<Album> findPage(int page, int size) {
+        return dao.findPage(page, size);
+    }
+
+    public long countAll() {
+        return dao.countAll();
+    }
+
+    public List<Album> findFilteredPage(String filterField, String filterValue, int page, int size) {
+        return dao.findFilteredPage(filterField, filterValue, page, size);
+    }
+
+    public long countFiltered(String filterField, String filterValue) {
+        return dao.countFiltered(filterField, filterValue);
+    }
 }

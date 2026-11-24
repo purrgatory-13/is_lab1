@@ -33,7 +33,7 @@ public class MusicBand {
     @NotNull
     private String description; //Поле не может быть null
     @JoinColumn(unique = true)
-    @NotNull
+    //наверное надо делать проверку на не налл при создании, а тут всё ок
     @OneToOne(cascade = CascadeType.PERSIST)
     private Album bestAlbum;
     @NotNull

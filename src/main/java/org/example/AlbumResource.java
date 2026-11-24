@@ -16,8 +16,32 @@ public class AlbumResource {
     private AlbumService service;
 
     @GET
-    public List<Album> getList() {
-        return service.findAll();
+    public Response getList(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("10") int size,
+            @QueryParam("filterField") String filterField,
+            @QueryParam("filterValue") String filterValue
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        boolean useFilter = filterField != null && !filterField.isBlank()
+                && filterValue != null && !filterValue.isEmpty();
+
+        List<Album> items = useFilter
+                ? service.findFilteredPage(filterField.trim(), filterValue, safePage, safeSize)
+                : service.findPage(safePage, safeSize);
+
+        long totalItems = useFilter
+                ? service.countFiltered(filterField.trim(), filterValue)
+                : service.countAll();
+
+        int totalPages = (int) Math.ceil((double) totalItems / safeSize);
+
+        MusicBandResource.PageResponse<Album> responseBody =
+                new MusicBandResource.PageResponse<>(items, safePage, safeSize, totalItems, totalPages);
+
+        return Response.ok(responseBody).build();
     }
 
     @GET

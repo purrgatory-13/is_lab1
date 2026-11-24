@@ -13,12 +13,48 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class MusicBandResource {
 
+    public record PageResponse<T>(
+            List<T> items,
+            int page,
+            int size,
+            long totalItems,
+            int totalPages
+    ) {}
+
     @Inject
     private MusicBandService mbs;
 
     @GET
-    public List<MusicBand> getList() {
-        return mbs.findAll();
+    public Response getList(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("10") int size,
+            @QueryParam("filterField") String filterField,
+            @QueryParam("filterValue") String filterValue
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        boolean useFilter = filterField != null && !filterField.isBlank()
+                && filterValue != null && !filterValue.isEmpty();
+
+        List<MusicBand> items = useFilter
+                ? mbs.findFilteredPage(filterField.trim(), filterValue, safePage, safeSize)
+                : mbs.findPage(safePage, safeSize);
+
+        long totalItems = useFilter
+                ? mbs.countFiltered(filterField.trim(), filterValue)
+                : mbs.countAll();
+
+        int totalPages = (int) Math.ceil((double) totalItems / safeSize);
+
+        PageResponse<MusicBand> responseBody = new PageResponse<>(
+                items,
+                safePage,
+                safeSize,
+                totalItems,
+                totalPages
+        );
+        return Response.ok(responseBody).build();
     }
 
     @GET @Path("/{id}")
@@ -48,15 +84,6 @@ public class MusicBandResource {
                         errorMessage = "Этот альбом уже назначен лучшим у другой музыкальной группы";
                         break;
                     } else if (msg.contains("unique constraint") || msg.contains("duplicate key")) {
-                        errorMessage = "Музыкальная группа с такими уникальными полями уже существует";
-                        break;
-                    } else if (msg.contains("NotNull") || msg.contains("ConstraintViolation")) {
-                        errorMessage = "Заполнены не все обязательные поля или нарушены ограничения";
-                        break;
-                    }
-                }
-                if (msg != null) {
-                    if (msg.contains("unique constraint") || msg.contains("duplicate key")) {
                         errorMessage = "Музыкальная группа с такими уникальными полями уже существует";
                         break;
                     } else if (msg.contains("NotNull") || msg.contains("ConstraintViolation")) {
@@ -186,5 +213,4 @@ public class MusicBandResource {
     public List<MusicBand> getFrontManLowerThan(@PathParam("number") int number) {
         return mbs.frontManLowerThan(number);
     }
-
 }

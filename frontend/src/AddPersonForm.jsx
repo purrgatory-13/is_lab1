@@ -71,7 +71,7 @@ export default function AddPersonForm({ onClose }) {
     };
 
     return (
-        <div style={{ padding: '20px', border: '1px solid #ccc', margin: '20px 0' }}>
+        <div style={{ padding: '20px', margin: '20px 0', display: 'inline-block'}}>
             <h2>Добавить персону</h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '350px', marginBottom: '15px' }}>
@@ -123,8 +123,8 @@ export default function AddPersonForm({ onClose }) {
                     />
                 </div>
 
-                {/* ЛОКАЦИЯ ПЕРСОНЫ */}
-                <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '10px' }}>
+
+                <div style={{paddingTop: '10px', marginTop: '10px' }}>
                     <div>
                         <label>Создать новую локацию?</label>
                         <input
@@ -156,7 +156,7 @@ export default function AddPersonForm({ onClose }) {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'block', gap: '10px' }}>
                 <button type="button" onClick={SubmitPerson}>Добавить</button>
                 <button type="button" onClick={CloseForm}>Закрыть</button>
             </div>

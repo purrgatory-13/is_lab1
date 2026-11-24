@@ -18,7 +18,7 @@ export default function AuthForm({ onLoginSuccess }) {
         fetch(`http://localhost:8080/is_lab1${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // <--- ВАЖНО для приема кук
+            credentials: 'include',
             body: JSON.stringify({ username, password })
         })
             .then(async res => {
@@ -31,7 +31,7 @@ export default function AuthForm({ onLoginSuccess }) {
             .then(() => {
                 toast.success(isLoginMode ? "Успешный вход!" : "Регистрация успешна! Теперь войдите.");
                 if (isLoginMode) {
-                    onLoginSuccess(username); // Больше нет localStorage.setItem
+                    onLoginSuccess(username);
                 } else {
                     setIsLoginMode(true);
                 }
@@ -46,20 +46,17 @@ export default function AuthForm({ onLoginSuccess }) {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            height: '100vh',
-            background: '#f4f4f4'
+            minHeight: '100svh',
+            width: '100%'
         }}>
             <form onSubmit={handleSubmit} style={{
-                background: 'white',
-                padding: '30px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-                width: '300px',
+                width: '320px',
+                maxWidth: '90%',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '15px'
+                gap: '12px'
             }}>
-                <h2 style={{ textAlign: 'center', margin: '0 0 10px 0' }}>
+                <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>
                     {isLoginMode ? 'Вход' : 'Регистрация'}
                 </h2>
 
@@ -68,7 +65,6 @@ export default function AuthForm({ onLoginSuccess }) {
                     placeholder="Логин"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    style={{ padding: '8px', fontSize: '14px' }}
                 />
 
                 <input
@@ -76,32 +72,15 @@ export default function AuthForm({ onLoginSuccess }) {
                     placeholder="Пароль"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{ padding: '8px', fontSize: '14px' }}
                 />
 
-                <button type="submit" style={{
-                    padding: '10px',
-                    background: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                }}>
+                <button type="submit">
                     {isLoginMode ? 'Войти' : 'Зарегистрироваться'}
                 </button>
 
                 <button
                     type="button"
                     onClick={() => setIsLoginMode(!isLoginMode)}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#007bff',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        textAlign: 'center'
-                    }}
                 >
                     {isLoginMode ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
                 </button>

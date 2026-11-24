@@ -17,8 +17,32 @@ public class PersonResource {
     private PersonService mbs;
 
     @GET
-    public List<Person> getList() {
-        return mbs.findAll();
+    public Response getList(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("10") int size,
+            @QueryParam("filterField") String filterField,
+            @QueryParam("filterValue") String filterValue
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        boolean useFilter = filterField != null && !filterField.isBlank()
+                && filterValue != null && !filterValue.isEmpty();
+
+        List<Person> items = useFilter
+                ? mbs.findFilteredPage(filterField.trim(), filterValue, safePage, safeSize)
+                : mbs.findPage(safePage, safeSize);
+
+        long totalItems = useFilter
+                ? mbs.countFiltered(filterField.trim(), filterValue)
+                : mbs.countAll();
+
+        int totalPages = (int) Math.ceil((double) totalItems / safeSize);
+
+        MusicBandResource.PageResponse<Person> responseBody =
+                new MusicBandResource.PageResponse<>(items, safePage, safeSize, totalItems, totalPages);
+
+        return Response.ok(responseBody).build();
     }
 
     @GET @Path("/{id}")

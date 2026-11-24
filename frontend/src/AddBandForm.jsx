@@ -42,11 +42,11 @@ export default function AddBandForm({onClose}){
         newLocationName: ''
     });
 
-    // Состояния для хранения подгруженных по ID данных (неизменяемый просмотр)
+
     const [fetchedAlbum, setFetchedAlbum] = useState(null);
     const [fetchedFrontman, setFetchedFrontman] = useState(null);
 
-    // Эффект для загрузки данных альбома по ID, если выбран существующий альбом
+
     useEffect(() => {
         if (!formData.createNewAlbum && formData.bestAlbumId) {
             fetch(`http://localhost:8080/is_lab1/albums/${formData.bestAlbumId}`)
@@ -58,7 +58,7 @@ export default function AddBandForm({onClose}){
         }
     }, [formData.createNewAlbum, formData.bestAlbumId]);
 
-    // Эффект для загрузки данных фронтмена по ID, если выбран существующий фронтмен
+
     useEffect(() => {
         if (!formData.createNewFrontman && formData.frontManId) {
             fetch(`http://localhost:8080/is_lab1/persons/${formData.frontManId}`)
@@ -232,7 +232,6 @@ export default function AddBandForm({onClose}){
                     />
                 </div>
 
-                {/* АЛЬБОМ */}
                 <div>
                     <div>
                         <label>Лучший альбом (Создать новый?):</label>
@@ -255,7 +254,7 @@ export default function AddBandForm({onClose}){
                                     onChange={handleChange}
                                 />
                             </div>
-                            {/* Блок просмотра данных выбранного альбома (неизменяемый) */}
+
                             {fetchedAlbum && (
                                 <div style={{ border: '1px dashed #666', padding: '8px', marginTop: '5px', background: '#f9f9f9' }}>
                                     <p style={{ margin: '2px 0', fontSize: '14px' }}><strong>Просмотр альбома:</strong></p>
@@ -293,7 +292,6 @@ export default function AddBandForm({onClose}){
                     />
                 </div>
 
-                {/* ФРОНТМЕН */}
                 <div>
                     <div>
                         <label>Фронтмен (Создать нового?):</label>
@@ -316,7 +314,6 @@ export default function AddBandForm({onClose}){
                                     onChange={handleChange}
                                 />
                             </div>
-                            {/* Блок просмотра данных выбранного фронтмена (неизменяемый) */}
                             {fetchedFrontman && (
                                 <div style={{ border: '1px dashed #666', padding: '8px', marginTop: '5px', background: '#f9f9f9' }}>
                                     <p style={{ margin: '2px 0', fontSize: '14px' }}><strong>Просмотр фронтмена:</strong></p>
@@ -368,7 +365,7 @@ export default function AddBandForm({onClose}){
                                 <input type="text" name="newPersonPassportID" value={formData.newPersonPassportID} onChange={handleChange} />
                             </div>
 
-                            {/* Локация фронтмена */}
+
                             <div>
                                 <label>Создать новую локацию?</label>
                                 <input

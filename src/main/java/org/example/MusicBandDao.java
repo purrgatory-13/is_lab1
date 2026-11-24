@@ -55,9 +55,13 @@ public class MusicBandDao {
     }
 
     public void update(MusicBand mb) {
-        if (mb.getBestAlbum() != null && mb.getBestAlbum().getId() > 0) {
-            Album album = em.find(Album.class, mb.getBestAlbum().getId());
-            mb.setBestAlbum(album);
+        if (mb.getBestAlbum() != null) {
+            if (mb.getBestAlbum().getId() > 0) {
+                Album album = em.find(Album.class, mb.getBestAlbum().getId());
+                mb.setBestAlbum(album);
+            } else {
+                mb.setBestAlbum(null);
+            }
         }
         if (mb.getFrontMan() != null && mb.getFrontMan().getId() > 0) {
             Person person = em.find(Person.class, mb.getFrontMan().getId());
@@ -137,5 +141,72 @@ public class MusicBandDao {
     public Long countByAlbumsCount(int count) {
         return em.createQuery("SELECT COUNT(b) FROM MusicBand b WHERE b.albumsCount = :count", Long.class)
                 .setParameter("count", count).getSingleResult();
+    }
+    public List<MusicBand> findPage(int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+
+        return em
+                .createQuery("SELECT b FROM MusicBand b ORDER BY b.id ASC", MusicBand.class)
+                .setFirstResult(safePage * safeSize)
+                .setMaxResults(safeSize)
+                .getResultList();
+    }
+
+    public long countAll() {
+        return em
+                .createQuery("SELECT COUNT(b) FROM MusicBand b", Long.class)
+                .getSingleResult();
+    }
+
+    public List<MusicBand> findFilteredPage(String filterField, String filterValue, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+
+        StringBuilder jpql = new StringBuilder("SELECT b FROM MusicBand b WHERE 1=1");
+        String expr = resolveStringFilterExpression(filterField);
+        boolean hasFilter = expr != null && filterValue != null && !filterValue.isEmpty();
+
+        if (hasFilter) {
+            jpql.append(" AND ").append(expr).append(" = :filterValue");
+        }
+        jpql.append(" ORDER BY b.id ASC");
+
+        var query = em.createQuery(jpql.toString(), MusicBand.class);
+        if (hasFilter) {
+            query.setParameter("filterValue", filterValue);
+        }
+        return query.setFirstResult(safePage * safeSize)
+                .setMaxResults(safeSize)
+                .getResultList();
+    }
+
+    public long countFiltered(String filterField, String filterValue) {
+        StringBuilder jpql = new StringBuilder("SELECT COUNT(b) FROM MusicBand b WHERE 1=1");
+        String expr = resolveStringFilterExpression(filterField);
+        boolean hasFilter = expr != null && filterValue != null && !filterValue.isEmpty();
+
+        if (hasFilter) {
+            jpql.append(" AND ").append(expr).append(" = :filterValue");
+        }
+
+        var query = em.createQuery(jpql.toString(), Long.class);
+        if (hasFilter) {
+            query.setParameter("filterValue", filterValue);
+        }
+        return query.getSingleResult();
+    }
+
+    private String resolveStringFilterExpression(String field) {
+        if (field == null) return null;
+        return switch (field) {
+            case "name" -> "b.name";
+            case "description" -> "b.description";
+            case "bestAlbum.name" -> "b.bestAlbum.name";
+            case "frontMan.name" -> "b.frontMan.name";
+            case "frontMan.passportID" -> "b.frontMan.passportID";
+            case "frontMan.location.name" -> "b.frontMan.location.name";
+            default -> null;
+        };
     }
 }

@@ -22,10 +22,6 @@ public class MusicBandService {
         dao.update(mb);
     }
 
-    public void updateBandData(int id, MusicBand incoming) {
-        dao.updateBandData(id, incoming);
-    }
-
     public MusicBand findById(int id){
         return dao.findById(id);
     }
@@ -38,10 +34,6 @@ public class MusicBandService {
         MusicBand band = dao.findById(id);
         if (band == null) {
             throw new IllegalArgumentException("Музыкальная группа для удаления не найдена");
-        }
-
-        if (band.getBestAlbum() != null || band.getFrontMan() != null) {
-            throw new IllegalStateException("Нельзя удалить музыкальную группу, с ней связан альбом или фронтмен");
         }
 
         dao.remove(id);
@@ -67,10 +59,38 @@ public class MusicBandService {
 
     //Добавить новый сингл указанной группе.
     public void addNewSingle(int id){
+        MusicBand band = dao.findById(id);
+        if (band == null) {
+            throw new IllegalArgumentException("Музыкальная группа не найдена");
+        }
+        
         dao.incrementSingle(id);
     }
     //Удалить из группы участника.
     public void removeMember(int id){
+        MusicBand band = dao.findById(id);
+        if (band == null) {
+            throw new IllegalArgumentException("Музыкальная группа не найдена");
+        }
+        if (band.getNumberOfParticipants() <= 1) {
+            throw new IllegalStateException("В группе должен быть хотя бы один участник");
+        }
         dao.decrementMember(id);
+    }
+
+    public List<MusicBand> findPage(int page, int size) {
+        return dao.findPage(page, size);
+    }
+
+    public long countAll() {
+        return dao.countAll();
+    }
+
+    public List<MusicBand> findFilteredPage(String filterField, String filterValue, int page, int size) {
+        return dao.findFilteredPage(filterField, filterValue, page, size);
+    }
+
+    public long countFiltered(String filterField, String filterValue) {
+        return dao.countFiltered(filterField, filterValue);
     }
 }

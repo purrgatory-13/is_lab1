@@ -1,5 +1,5 @@
 import {toast} from 'react-toastify';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonForm }) {
 
@@ -7,33 +7,55 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
     const [searchId, setSearchId] = useState('');
     const [isSearching, setIsSearching] = useState(false);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 5;
+    const [filterField, setFilterField] = useState('name');
+    const [filterValue, setFilterValue] = useState('');
+    const [appliedFilter, setAppliedFilter] = useState({ field: '', value: '' });
 
-    const fetchPersons = () => {
+    const [page, setPage] = useState(0);
+    const pageSize = 5;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+
+    const fetchPersons = useCallback(() => {
         if (isSearching) return;
 
-        fetch('http://localhost:8080/is_lab1/person')
+        const params = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize),
+        });
+
+        if (appliedFilter.field && appliedFilter.value !== '') {
+            params.set('filterField', appliedFilter.field);
+            params.set('filterValue', appliedFilter.value);
+        }
+
+        fetch(`http://localhost:8080/is_lab1/person?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error("Server Error")
+                    throw new Error("Server Error");
                 }
                 return response.json();
             })
             .then(data => {
-                const sorted = [...data].sort((a, b) => a.id - b.id);
-                setPersons(sorted);
+                const items = data.items ?? [];
+                if (items.length === 0 && page > 0) {
+                    setPage(prev => Math.max(0, prev - 1));
+                    return;
+                }
+                setPersons(items);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems ?? 0);
             })
             .catch(error => {
                 console.error("Не удалось загрузить персон:", error);
             });
-    };
+    }, [isSearching, page, pageSize, appliedFilter]);
 
     useEffect(() => {
         fetchPersons();
         const interval = setInterval(fetchPersons, 3000);
         return () => clearInterval(interval);
-    }, [isSearching]);
+    }, [fetchPersons]);
 
     const handleSearchById = (e) => {
         e.preventDefault();
@@ -43,7 +65,6 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
         }
 
         setIsSearching(true);
-        setCurrentPage(1);
 
         fetch(`http://localhost:8080/is_lab1/person/${searchId}`)
             .then(response => {
@@ -57,22 +78,42 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
             })
             .then(data => {
                 const results = Array.isArray(data) ? data : [data];
-                const sorted = [...results].sort((a, b) => a.id - b.id);
-                setPersons(sorted);
+                setPersons(results);
+                setTotalPages(1);
+                setTotalItems(results.length);
                 toast.success(`Найдена персона с ID: ${searchId}`);
             })
             .catch(error => {
                 console.error(error);
                 toast.error(error.message);
                 setPersons([]);
+                setTotalPages(1);
+                setTotalItems(0);
             });
     };
 
     const handleResetSearch = () => {
         setSearchId('');
         setIsSearching(false);
-        setCurrentPage(1);
-        fetchPersons();
+        setPage(0);
+    };
+
+    const handleApplyFilter = (e) => {
+        e.preventDefault();
+        if (filterValue === '') {
+            toast.warn("Введите точное значение для фильтрации");
+            return;
+        }
+        setIsSearching(false);
+        setSearchId('');
+        setPage(0);
+        setAppliedFilter({ field: filterField, value: filterValue });
+    };
+
+    const handleResetFilter = () => {
+        setFilterValue('');
+        setAppliedFilter({ field: '', value: '' });
+        setPage(0);
     };
 
     const handleDeletePerson = async (id) => {
@@ -89,7 +130,7 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
             }
 
             toast.success(`Персона с ID ${id} удалена`);
-            setPersons(persons.filter(p => p.id !== id));
+            fetchPersons();
         } catch (error) {
             console.error(error);
             toast.error(error.message);
@@ -102,30 +143,29 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
         }
     }
 
-    const totalPages = Math.ceil(persons.length / pageSize) || 1;
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    const currentPersons = persons.slice(indexOfFirstItem, indexOfLastItem);
-
     const handleNextPage = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+        if (page + 1 < totalPages) {
+            setPage(prev => prev + 1);
+        }
     };
 
     const handlePrevPage = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
+        if (page > 0) {
+            setPage(prev => prev - 1);
+        }
     };
 
     return (
         <div>
             <h1>Список персон</h1>
 
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                 <button type="button" onClick={addPersonButton}>Добавить персону</button>
 
                 <form onSubmit={handleSearchById} style={{ display: 'flex', gap: '5px' }}>
                     <input
                         type="number"
-                        placeholder="Введите ID персоны"
+                        placeholder="Введите ID"
                         value={searchId}
                         onChange={(e) => setSearchId(e.target.value)}
                         style={{ padding: '5px' }}
@@ -133,6 +173,29 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
                     <button type="submit">Найти по ID</button>
                     {isSearching && (
                         <button type="button" onClick={handleResetSearch}>Сбросить</button>
+                    )}
+                </form>
+
+                <form onSubmit={handleApplyFilter} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                    <select
+                        value={filterField}
+                        onChange={(e) => setFilterField(e.target.value)}
+                        style={{ padding: '5px' }}
+                    >
+                        <option value="name">Имя</option>
+                        <option value="passportID">Паспорт ID</option>
+                        <option value="location.name">Локация</option>
+                    </select>
+                    <input
+                        type="text"
+                        placeholder="Точное совпадение"
+                        value={filterValue}
+                        onChange={(e) => setFilterValue(e.target.value)}
+                        style={{ padding: '5px' }}
+                    />
+                    <button type="submit">Фильтровать</button>
+                    {appliedFilter.value !== '' && (
+                        <button type="button" onClick={handleResetFilter}>Сбросить фильтр</button>
                     )}
                 </form>
             </div>
@@ -151,8 +214,8 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
                 </tr>
                 </thead>
                 <tbody>
-                {currentPersons.length > 0 ? (
-                    currentPersons.map((p)=>(
+                {persons.length > 0 ? (
+                    persons.map((p)=>(
                         <tr key={p.id}>
                             <td>{p.id}</td>
                             <td>{p.name}</td>
@@ -191,11 +254,13 @@ export default function PersonTable({ onOpenAddPersonForm, onOpenModifyPersonFor
             </table>
 
             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                <button type="button" onClick={handlePrevPage} disabled={isSearching || page <= 0}>
                     Назад
                 </button>
-                <span>Страница {currentPage} из {totalPages}</span>
-                <button onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                <span>
+                    Страница {totalItems === 0 ? 0 : page + 1} из {totalItems === 0 ? 0 : totalPages} (объектов: {totalItems})
+                </span>
+                <button type="button" onClick={handleNextPage} disabled={isSearching || page + 1 >= totalPages}>
                     Вперед
                 </button>
             </div>

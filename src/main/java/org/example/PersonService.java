@@ -3,11 +3,9 @@ package org.example;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.example.entities.MusicBand;
 import org.example.entities.Person;
 
 import java.util.List;
-
 
 @ApplicationScoped
 @Transactional
@@ -46,8 +44,23 @@ public class PersonService {
         dao.remove(id);
     }
 
-    public List<Person> findNameSubstr(String str){
-        return dao.findNameSubstr(str);
+    public List<Person> findPage(int page, int size) {
+        return dao.findPage(page, size);
     }
 
+    public long countAll() {
+        return dao.countAll();
+    }
+
+    public List<Person> findFilteredPage(String filterField, String filterValue, int page, int size) {
+        return dao.findFilteredPage(filterField, filterValue, page, size);
+    }
+
+    public long countFiltered(String filterField, String filterValue) {
+        return dao.countFiltered(filterField, filterValue);
+    }
+
+    public List<Person> findNameSubstr(String str) {
+        return dao.findNameSubstr(str);
+    }
 }

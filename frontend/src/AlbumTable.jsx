@@ -1,5 +1,5 @@
 import {toast} from 'react-toastify';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }) {
 
@@ -7,34 +7,55 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
     const [searchId, setSearchId] = useState('');
     const [isSearching, setIsSearching] = useState(false);
 
-    // Состояния для пагинации
-    const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 5; // Количество элементов на странице
+    const [filterField, setFilterField] = useState('name');
+    const [filterValue, setFilterValue] = useState('');
+    const [appliedFilter, setAppliedFilter] = useState({ field: '', value: '' });
 
-    const fetchAlbums = () => {
+    const [page, setPage] = useState(0);
+    const pageSize = 5;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+
+    const fetchAlbums = useCallback(() => {
         if (isSearching) return;
 
-        fetch('http://localhost:8080/is_lab1/albums')
+        const params = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize),
+        });
+
+        if (appliedFilter.field && appliedFilter.value !== '') {
+            params.set('filterField', appliedFilter.field);
+            params.set('filterValue', appliedFilter.value);
+        }
+
+        fetch(`http://localhost:8080/is_lab1/albums?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error("Server Error")
+                    throw new Error("Server Error");
                 }
                 return response.json();
             })
             .then(data => {
-                const sorted = [...data].sort((a, b) => a.id - b.id);
-                setAlbums(sorted);
+                const items = data.items ?? [];
+                if (items.length === 0 && page > 0) {
+                    setPage(prev => Math.max(0, prev - 1));
+                    return;
+                }
+                setAlbums(items);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems ?? 0);
             })
             .catch(error => {
                 console.error("Не удалось загрузить альбомы:", error);
             });
-    };
+    }, [isSearching, page, pageSize, appliedFilter]);
 
     useEffect(() => {
         fetchAlbums();
         const interval = setInterval(fetchAlbums, 3000);
         return () => clearInterval(interval);
-    }, [isSearching]);
+    }, [fetchAlbums]);
 
     const handleSearchById = (e) => {
         e.preventDefault();
@@ -44,7 +65,6 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
         }
 
         setIsSearching(true);
-        setCurrentPage(1);
 
         fetch(`http://localhost:8080/is_lab1/albums/${searchId}`)
             .then(response => {
@@ -58,22 +78,42 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
             })
             .then(data => {
                 const results = Array.isArray(data) ? data : [data];
-                const sorted = [...results].sort((a, b) => a.id - b.id);
-                setAlbums(sorted);
+                setAlbums(results);
+                setTotalPages(1);
+                setTotalItems(results.length);
                 toast.success(`Найден альбом с ID: ${searchId}`);
             })
             .catch(error => {
                 console.error(error);
                 toast.error(error.message);
                 setAlbums([]);
+                setTotalPages(1);
+                setTotalItems(0);
             });
     };
 
     const handleResetSearch = () => {
         setSearchId('');
         setIsSearching(false);
-        setCurrentPage(1);
-        fetchAlbums();
+        setPage(0);
+    };
+
+    const handleApplyFilter = (e) => {
+        e.preventDefault();
+        if (filterValue === '') {
+            toast.warn("Введите точное значение для фильтрации");
+            return;
+        }
+        setIsSearching(false);
+        setSearchId('');
+        setPage(0);
+        setAppliedFilter({ field: filterField, value: filterValue });
+    };
+
+    const handleResetFilter = () => {
+        setFilterValue('');
+        setAppliedFilter({ field: '', value: '' });
+        setPage(0);
     };
 
     const handleDeleteAlbum = async (id) => {
@@ -90,7 +130,7 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
             }
 
             toast.success(`Альбом с ID ${id} удален`);
-            setAlbums(albums.filter(a => a.id !== id));
+            fetchAlbums();
         } catch (error) {
             console.error(error);
             toast.error(error.message);
@@ -103,25 +143,23 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
         }
     }
 
-
-    const totalPages = Math.ceil(albums.length / pageSize) || 1;
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    const currentAlbums = albums.slice(indexOfFirstItem, indexOfLastItem);
-
     const handleNextPage = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+        if (page + 1 < totalPages) {
+            setPage(prev => prev + 1);
+        }
     };
 
     const handlePrevPage = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
+        if (page > 0) {
+            setPage(prev => prev - 1);
+        }
     };
 
     return (
         <div>
             <h1>Список альбомов</h1>
 
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                 <button type="button" onClick={addAlbumButton}>Добавить альбом</button>
 
                 <form onSubmit={handleSearchById} style={{ display: 'flex', gap: '5px' }}>
@@ -137,6 +175,27 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
                         <button type="button" onClick={handleResetSearch}>Сбросить</button>
                     )}
                 </form>
+
+                <form onSubmit={handleApplyFilter} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                    <select
+                        value={filterField}
+                        onChange={(e) => setFilterField(e.target.value)}
+                        style={{ padding: '5px' }}
+                    >
+                        <option value="name">Название</option>
+                    </select>
+                    <input
+                        type="text"
+                        placeholder="Точное совпадение"
+                        value={filterValue}
+                        onChange={(e) => setFilterValue(e.target.value)}
+                        style={{ padding: '5px' }}
+                    />
+                    <button type="submit">Фильтровать</button>
+                    {appliedFilter.value !== '' && (
+                        <button type="button" onClick={handleResetFilter}>Сбросить фильтр</button>
+                    )}
+                </form>
             </div>
 
             <table>
@@ -150,8 +209,8 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
                 </tr>
                 </thead>
                 <tbody>
-                {currentAlbums.length > 0 ? (
-                    currentAlbums.map((a)=>(
+                {albums.length > 0 ? (
+                    albums.map((a)=>(
                         <tr key={a.id}>
                             <td>{a.id}</td>
                             <td>{a.name}</td>
@@ -187,11 +246,13 @@ export default function AlbumTable({ onOpenAddAlbumForm, onOpenModifyAlbumForm }
             </table>
 
             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                <button type="button" onClick={handlePrevPage} disabled={isSearching || page <= 0}>
                     Назад
                 </button>
-                <span>Страница {currentPage} из {totalPages}</span>
-                <button onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                <span>
+                    Страница {totalItems === 0 ? 0 : page + 1} из {totalItems === 0 ? 0 : totalPages} (объектов: {totalItems})
+                </span>
+                <button type="button" onClick={handleNextPage} disabled={isSearching || page + 1 >= totalPages}>
                     Вперед
                 </button>
             </div>

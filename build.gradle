@@ -20,6 +20,7 @@ java {
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
+
 repositories {
     mavenCentral()
 }
@@ -42,7 +43,6 @@ test {
     useJUnitPlatform()
 }
 
-// Твоя старая таска для jar осталась на месте
 tasks.register('fatJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveFileName.set('is_lab1.jar')
@@ -57,32 +57,23 @@ tasks.register('fatJar', Jar) {
     with jar
 }
 
-// --- НОВЫЕ ТАСКИ ДЛЯ WAR ---
-
-// Настройка стандартного war-файла
 war {
     archiveFileName.set('is_lab1.war')
 }
 
-// 1. Таска: Сборка WAR БЕЗ фронта (только бэкенд)
-tasks.register('buildWarWithoutFrontend', War) {
-    archiveFileName.set('is_lab1_backend.war')
-    // Здесь собирается стандартный src/main/webapp + твои скомпилированные классы бэка
-}
 
-// 2. Таска: Сборка WAR С ФРОНТОМ (npm run build + упаковка)
-// Предполагается, что фронтенд лежит в папке frontend рядом с gradle-проектом (или измени workingDir)
+// 1. Таска сборки React-приложения через npm
 tasks.register('buildFrontend', Exec) {
-    workingDir = file('./frontend') // Укажи путь к папке с React-проектом, если она отдельно (например, file('./frontend'))
-    commandLine 'npm', 'run', 'build'
+    workingDir = file('./frontend') // Путь к папке с фронтендом
+    commandLine System.getProperty('os.name').toLowerCase().contains('win') ? 'npm.cmd' : 'npm', 'run', 'build'
 }
 
+// 2. Таска сборки единого WAR-файла (бэк + фронт)
 tasks.register('buildWarWithFrontend', War) {
     dependsOn 'buildFrontend'
-    archiveFileName.set('is_lab1_full.war')
+    archiveFileName.set('is_lab1.war') // Итоговое имя файла
 
-    // Копируем скомпилированный билд React (обычно папка dist или build) внутрь варника в корневую папку веб-приложения
     from('frontend/dist') {
-    into '.'
+        into '.'
     }
 }

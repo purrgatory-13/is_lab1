@@ -53,7 +53,6 @@ public class UserResource {
     @POST
     @Path("/logout")
     public Response logout() {
-        // Удаляем куку, устанавливая maxAge(0)
         NewCookie cookie = new NewCookie.Builder("username")
                 .value("")
                 .path("/")

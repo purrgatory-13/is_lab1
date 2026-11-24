@@ -1,5 +1,5 @@
 import {toast} from 'react-toastify';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function formatDate(dateString) {
     if (!dateString) return '';
@@ -27,12 +27,29 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
     const [searchId, setSearchId] = useState('');
     const [isSearching, setIsSearching] = useState(false);
 
-    const [currentPage, setCurrentPage] = useState(1);
+    const [filterField, setFilterField] = useState('name');
+    const [filterValue, setFilterValue] = useState('');
+    const [appliedFilter, setAppliedFilter] = useState({ field: '', value: '' });
+
+    const [page, setPage] = useState(0);
     const pageSize = 5;
-    const fetchBands = () => {
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+
+    const fetchBands = useCallback(() => {
         if (isSearching) return;
 
-        fetch('http://localhost:8080/is_lab1/bands')
+        const params = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize),
+        });
+
+        if (appliedFilter.field && appliedFilter.value !== '') {
+            params.set('filterField', appliedFilter.field);
+            params.set('filterValue', appliedFilter.value);
+        }
+
+        fetch(`http://localhost:8080/is_lab1/bands?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error("Server Error")
@@ -40,19 +57,25 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
                 return response.json();
             })
             .then(data => {
-                const sorted = [...data].sort((a, b) => a.id - b.id);
-                setBands(sorted);
+                const items = data.items ?? [];
+                if (items.length === 0 && page > 0) {
+                    setPage(prev => Math.max(0, prev - 1));
+                    return;
+                }
+                setBands(items);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems ?? 0);
             })
             .catch(error => {
                 console.error("Не удалось загрузить группы:", error);
             });
-    };
+    }, [isSearching, page, pageSize, appliedFilter]);
 
     useEffect(() => {
         fetchBands();
         const interval = setInterval(fetchBands, 3000);
         return () => clearInterval(interval);
-    }, [isSearching]);
+    }, [fetchBands]);
 
     const handleSearchById = (e) => {
         e.preventDefault();
@@ -62,7 +85,6 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
         }
 
         setIsSearching(true);
-        setCurrentPage(1);
 
         fetch(`http://localhost:8080/is_lab1/bands/${searchId}`)
             .then(response => {
@@ -77,20 +99,41 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
             .then(data => {
                 const results = Array.isArray(data) ? data : [data];
                 setBands(results);
+                setTotalPages(1);
+                setTotalItems(results.length);
                 toast.success(`Найдена группа с ID: ${searchId}`);
             })
             .catch(error => {
                 console.error(error);
                 toast.error(error.message);
                 setBands([]);
+                setTotalPages(1);
+                setTotalItems(0);
             });
     };
 
     const handleResetSearch = () => {
         setSearchId('');
         setIsSearching(false);
-        setCurrentPage(1);
-        fetchBands();
+        setPage(0);
+    };
+
+    const handleApplyFilter = (e) => {
+        e.preventDefault();
+        if (filterValue === '') {
+            toast.warn("Введите точное значение для фильтрации");
+            return;
+        }
+        setIsSearching(false);
+        setSearchId('');
+        setPage(0);
+        setAppliedFilter({ field: filterField, value: filterValue });
+    };
+
+    const handleResetFilter = () => {
+        setFilterValue('');
+        setAppliedFilter({ field: '', value: '' });
+        setPage(0);
     };
 
     const handleDeleteBand = (id) => {
@@ -105,7 +148,7 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
                     throw new Error(errText || "Не удалось удалить группу");
                 }
                 toast.success(`Группа с ID ${id} удалена`);
-                setBands(bands.filter(b => b.id !== id));
+                fetchBands();
             })
             .catch(error => {
                 console.error(error);
@@ -117,24 +160,23 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
         onOpenAddForm();
     }
 
-    const totalPages = Math.ceil(bands.length / pageSize) || 1;
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    const currentBands = bands.slice(indexOfFirstItem, indexOfLastItem);
-
     const handleNextPage = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+        if (page + 1 < totalPages) {
+            setPage(prev => prev + 1);
+        }
     };
 
     const handlePrevPage = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
+        if (page > 0) {
+            setPage(prev => prev - 1);
+        }
     };
 
     return (
         <div>
             <h1>Список музыкальных групп</h1>
 
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                 <button onClick={addBandButton}>Добавить группу</button>
 
                 <form onSubmit={handleSearchById} style={{ display: 'flex', gap: '5px' }}>
@@ -148,6 +190,32 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
                     <button type="submit">Найти по ID</button>
                     {isSearching && (
                         <button type="button" onClick={handleResetSearch}>Сбросить</button>
+                    )}
+                </form>
+
+                <form onSubmit={handleApplyFilter} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                    <select
+                        value={filterField}
+                        onChange={(e) => setFilterField(e.target.value)}
+                        style={{ padding: '5px' }}
+                    >
+                        <option value="name">Название</option>
+                        <option value="description">Описание</option>
+                        <option value="bestAlbum.name">Лучший альбом</option>
+                        <option value="frontMan.name">Фронтмен</option>
+                        <option value="frontMan.passportID">Passport ID фронтмена</option>
+                        <option value="frontMan.location.name">Локация фронтмена</option>
+                    </select>
+                    <input
+                        type="text"
+                        placeholder="Точное совпадение"
+                        value={filterValue}
+                        onChange={(e) => setFilterValue(e.target.value)}
+                        style={{ padding: '5px' }}
+                    />
+                    <button type="submit">Фильтровать</button>
+                    {appliedFilter.value !== '' && (
+                        <button type="button" onClick={handleResetFilter}>Сбросить фильтр</button>
                     )}
                 </form>
             </div>
@@ -171,8 +239,8 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
                 </tr>
                 </thead>
                 <tbody>
-                {currentBands.length > 0 ? (
-                    currentBands.map((b)=>(
+                {bands.length > 0 ? (
+                    bands.map((b)=>(
                         <tr key={b.id}>
                             <td>{b.id}</td>
                             <td>{b.name}</td>
@@ -214,11 +282,13 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
             </table>
 
             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                <button type="button" onClick={handlePrevPage} disabled={isSearching || page <= 0}>
                     Назад
                 </button>
-                <span>Страница {currentPage} из {totalPages}</span>
-                <button onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                <span>
+                    Страница {totalItems === 0 ? 0 : page + 1} из {totalItems === 0 ? 0 : totalPages} (объектов: {totalItems})
+                </span>
+                <button type="button" onClick={handleNextPage} disabled={isSearching || page + 1 >= totalPages}>
                     Вперед
                 </button>
             </div>

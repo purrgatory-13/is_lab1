@@ -9,7 +9,6 @@ public class Main {
             var emf = Persistence.createEntityManagerFactory("MusicBandPU");
             var em = emf.createEntityManager();
 
-            // Принудительно открываем транзакцию, чтобы провайдер инициализировал схему базы
             em.getTransaction().begin();
             em.getTransaction().commit();
 
