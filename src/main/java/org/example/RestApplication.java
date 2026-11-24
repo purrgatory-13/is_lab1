@@ -16,6 +16,7 @@ public class RestApplication extends Application {
         resources.add(AlbumResource.class);
         resources.add(UserResource.class);
         resources.add(EventStreamResource.class);
+        resources.add(JwtAuthFilter.class);
         resources.add(CorsFilter.class);
         return resources;
     }

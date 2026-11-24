@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch } from './api.js';
 
 export default function AddPersonForm({ onClose }) {
     const [formData, setFormData] = useState({
@@ -17,44 +18,111 @@ export default function AddPersonForm({ onClose }) {
         newLocationName: ''
     });
 
+    const [errors, setErrors] = useState({});
+
     const CloseForm = () => {
         toast.error("Данные не сохранены");
         onClose();
     };
 
+    function validate(data) {
+        const nextErrors = {};
+
+        if (!data.name || !data.name.trim()) {
+            nextErrors.name = "Поле обязательно: укажите имя персоны";
+        }
+
+        if (data.height === '' || data.height === null || data.height === undefined) {
+            nextErrors.height = "Поле обязательно: укажите рост";
+        } else {
+            const h = Number(data.height);
+            if (!Number.isFinite(h) || h <= 0) {
+                nextErrors.height = "Недопустимое значение: рост должен быть больше 0";
+            }
+        }
+
+        if (!data.passportID || !data.passportID.trim()) {
+            nextErrors.passportID = "Поле обязательно: укажите Паспорт ID";
+        }
+
+        if (data.createNewLocation) {
+            if (data.newLocationX === '' || !Number.isFinite(Number(data.newLocationX))) {
+                nextErrors.newLocationX = "Поле обязательно: укажите координату X";
+            }
+            if (data.newLocationY === '' || !Number.isFinite(Number(data.newLocationY))) {
+                nextErrors.newLocationY = "Поле обязательно: укажите координату Y";
+            }
+            if (data.newLocationZ === '' || !Number.isFinite(Number(data.newLocationZ))) {
+                nextErrors.newLocationZ = "Поле обязательно: укажите координату Z";
+            }
+        } else {
+            const locId = Number(data.locationId);
+            if (!data.locationId || !Number.isInteger(locId) || locId <= 0) {
+                nextErrors.locationId = "Поле обязательно: укажите корректный ID локации (больше 0)";
+            }
+        }
+
+        return nextErrors;
+    }
+
+    function handleHeightKeyDown(e) {
+        if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+            e.preventDefault();
+        }
+    }
+
     function handleChange(e) {
         const { name, value, type, checked } = e.target;
-        setFormData({
-            ...formData,
+
+        if (name === 'height' && type !== 'checkbox') {
+            if (value !== '' && !/^\d+$/.test(value)) {
+                return;
+            }
+        }
+
+        setFormData(prev => ({
+            ...prev,
             [name]: type === 'checkbox' ? checked : value
-        });
+        }));
+
+        if (errors[name]) {
+            setErrors(prev => {
+                const copy = { ...prev };
+                delete copy[name];
+                return copy;
+            });
+        }
     }
 
     const SubmitPerson = async () => {
+        const nextErrors = validate(formData);
+        if (Object.keys(nextErrors).length > 0) {
+            setErrors(nextErrors);
+            toast.warn("Проверьте обязательные поля и корректность данных");
+            return;
+        }
+
         try {
             const locationObj = formData.createNewLocation
                 ? {
                     x: Number(formData.newLocationX),
                     y: Number(formData.newLocationY),
                     z: Number(formData.newLocationZ),
-                    name: formData.newLocationName || null
+                    name: formData.newLocationName.trim() || null
                 }
                 : { id: Number(formData.locationId) };
 
             const payload = {
-                name: formData.name,
+                name: formData.name.trim(),
                 eyeColor: formData.eyeColor || null,
                 hairColor: formData.hairColor || null,
                 height: Number(formData.height),
-                passportID: formData.passportID,
+                passportID: formData.passportID.trim(),
                 location: locationObj
             };
 
-            const response = await fetch('http://localhost:8080/is_lab1/person', {
+            const response = await apiFetch('/person', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(payload)
             });
 
@@ -70,20 +138,29 @@ export default function AddPersonForm({ onClose }) {
         }
     };
 
+    const hasErrors = Object.keys(errors).length > 0;
+
     return (
-        <div style={{ padding: '20px', margin: '20px 0', display: 'inline-block'}}>
+        <div style={{ padding: '20px', margin: '20px 0', display: 'inline-block' }}>
             <h2>Добавить персону</h2>
+            <p style={{ fontSize: '13px', color: '#666' }}>
+                Поля со звёздочкой (<strong>*</strong>) обязательны для заполнения.
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '350px', marginBottom: '15px' }}>
                 <div>
-                    <label>Имя: </label>
+                    <label>Имя <span style={{ color: 'red' }}>*</span>: </label>
                     <input
                         type="text"
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
                     />
+                    {errors.name && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.name}</div>
+                    )}
                 </div>
+
                 <div>
                     <label>Цвет глаз: </label>
                     <select name="eyeColor" value={formData.eyeColor} onChange={handleChange}>
@@ -94,6 +171,7 @@ export default function AddPersonForm({ onClose }) {
                         <option value="BROWN">BROWN</option>
                     </select>
                 </div>
+
                 <div>
                     <label>Цвет волос: </label>
                     <select name="hairColor" value={formData.hairColor} onChange={handleChange}>
@@ -104,29 +182,38 @@ export default function AddPersonForm({ onClose }) {
                         <option value="BROWN">BROWN</option>
                     </select>
                 </div>
+
                 <div>
-                    <label>Рост: </label>
+                    <label>Рост <span style={{ color: 'red' }}>*</span>: </label>
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         name="height"
                         value={formData.height}
+                        onKeyDown={handleHeightKeyDown}
                         onChange={handleChange}
                     />
+                    {errors.height && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.height}</div>
+                    )}
                 </div>
+
                 <div>
-                    <label>Паспорт ID: </label>
+                    <label>Паспорт ID <span style={{ color: 'red' }}>*</span>: </label>
                     <input
                         type="text"
                         name="passportID"
                         value={formData.passportID}
                         onChange={handleChange}
                     />
+                    {errors.passportID && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.passportID}</div>
+                    )}
                 </div>
 
-
-                <div style={{paddingTop: '10px', marginTop: '10px' }}>
+                <div style={{ paddingTop: '10px', marginTop: '10px' }}>
                     <div>
-                        <label>Создать новую локацию?</label>
+                        <label>Создать новую локацию? <span style={{ color: 'red' }}>*</span></label>
                         <input
                             type="checkbox"
                             name="createNewLocation"
@@ -137,26 +224,73 @@ export default function AddPersonForm({ onClose }) {
 
                     {!formData.createNewLocation ? (
                         <div style={{ marginTop: '5px' }}>
-                            <label>ID существующей локации: </label>
+                            <label>ID существующей локации <span style={{ color: 'red' }}>*</span>: </label>
                             <input
                                 type="number"
+                                min="1"
                                 name="locationId"
                                 value={formData.locationId}
                                 onChange={handleChange}
                             />
+                            {errors.locationId && (
+                                <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.locationId}</div>
+                            )}
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '5px' }}>
-                            <input type="number" name="newLocationX" placeholder="X" value={formData.newLocationX} onChange={handleChange} />
-                            <input type="number" step="any" name="newLocationY" placeholder="Y" value={formData.newLocationY} onChange={handleChange} />
-                            <input type="number" name="newLocationZ" placeholder="Z" value={formData.newLocationZ} onChange={handleChange} />
-                            <input type="text" name="newLocationName" placeholder="Название локации" value={formData.newLocationName} onChange={handleChange} />
+                            <input
+                                type="number"
+                                name="newLocationX"
+                                placeholder="X *"
+                                value={formData.newLocationX}
+                                onChange={handleChange}
+                            />
+                            {errors.newLocationX && (
+                                <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.newLocationX}</div>
+                            )}
+
+                            <input
+                                type="number"
+                                step="any"
+                                name="newLocationY"
+                                placeholder="Y *"
+                                value={formData.newLocationY}
+                                onChange={handleChange}
+                            />
+                            {errors.newLocationY && (
+                                <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.newLocationY}</div>
+                            )}
+
+                            <input
+                                type="number"
+                                name="newLocationZ"
+                                placeholder="Z *"
+                                value={formData.newLocationZ}
+                                onChange={handleChange}
+                            />
+                            {errors.newLocationZ && (
+                                <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.newLocationZ}</div>
+                            )}
+
+                            <input
+                                type="text"
+                                name="newLocationName"
+                                placeholder="Название локации (необязательно)"
+                                value={formData.newLocationName}
+                                onChange={handleChange}
+                            />
                         </div>
                     )}
                 </div>
             </div>
 
-            <div style={{ display: 'block', gap: '10px' }}>
+            {hasErrors && (
+                <div style={{ color: 'crimson', marginBottom: '10px', fontSize: '13px' }}>
+                    Сохранение заблокировано: исправьте выделенные поля.
+                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
                 <button type="button" onClick={SubmitPerson}>Добавить</button>
                 <button type="button" onClick={CloseForm}>Закрыть</button>
             </div>

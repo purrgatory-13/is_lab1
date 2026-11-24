@@ -1,5 +1,6 @@
 import {toast} from "react-toastify";
 import {useState, useEffect} from "react";
+import { apiFetch } from "./api.js";
 
 export default function ModifyLocationForm({ locationId, onClose }) {
     const [formData, setFormData] = useState({
@@ -14,7 +15,7 @@ export default function ModifyLocationForm({ locationId, onClose }) {
     useEffect(() => {
         if (!locationId) return;
 
-        fetch(`http://localhost:8080/is_lab1/locations/${locationId}`)
+        apiFetch(`/locations/${locationId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Не удалось загрузить данные локации");
                 return res.json();
@@ -48,11 +49,8 @@ export default function ModifyLocationForm({ locationId, onClose }) {
                 name: formData.name || null
             };
 
-            const response = await fetch(`http://localhost:8080/is_lab1/locations/${locationId}`, {
+            const response = await apiFetch(`/locations/${locationId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(payload)
             });
 

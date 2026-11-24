@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch, createEventSource } from './api.js';
 
 function formatDate(dateString) {
     if (!dateString) return '';
@@ -23,51 +24,81 @@ function formatDate(dateString) {
 
 export default function Special_SubstrSearch({ isOpen, onClose, onOpenModifyForm }) {
     const [searchStr, setSearchStr] = useState('');
+    const [appliedQuery, setAppliedQuery] = useState('');
     const [bands, setBands] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    // Состояния для пагинации
-    const [currentPage, setCurrentPage] = useState(1);
+    const [page, setPage] = useState(0);
     const pageSize = 5;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
-    // Загрузка всех групп или результатов поиска
-    const loadBands = (query = '') => {
-        const url = query.trim()
-            ? `http://localhost:8080/is_lab1/bands/substr/${encodeURIComponent(query)}`
-            : 'http://localhost:8080/is_lab1/bands';
+    const loadBands = useCallback((query = '', targetPage = 0) => {
+        const params = new URLSearchParams({
+            page: String(targetPage),
+            size: String(pageSize),
+        });
 
-        fetch(url)
+        if (query.trim()) {
+            params.set('filterField', 'name');
+        }
+
+        const path = query.trim()
+            ? `/bands/substr/${encodeURIComponent(query)}?${params.toString()}`
+            : `/bands?${params.toString()}`;
+
+        apiFetch(path)
             .then(response => {
                 if (!response.ok) throw new Error("Ошибка при получении данных");
                 return response.json();
             })
             .then(data => {
-                const sorted = [...data].sort((a, b) => a.id - b.id);
-                setBands(sorted);
+                const items = data.items ?? [];
+                if (items.length === 0 && targetPage > 0) {
+                    setPage(prev => Math.max(0, prev - 1));
+                    return;
+                }
+                setBands(items);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems ?? 0);
             })
             .catch(error => {
                 console.error(error);
                 setBands([]);
+                setTotalPages(1);
+                setTotalItems(0);
             });
-    };
+    }, [pageSize]);
 
-    // При открытии компонента грузим все группы
     useEffect(() => {
-        if (isOpen) {
-            loadBands(searchStr);
-        }
-    }, [isOpen]);
+        if (!isOpen) return;
+        loadBands(appliedQuery, page);
+    }, [isOpen, appliedQuery, page, loadBands]);
 
-    // Поллинг: обновляем данные каждые 3 секунды
     useEffect(() => {
         if (!isOpen) return;
 
-        const interval = setInterval(() => {
-            loadBands(searchStr);
-        }, 3000);
+        const eventSource = createEventSource();
 
-        return () => clearInterval(interval);
-    }, [isOpen, searchStr]);
+        eventSource.addEventListener('entity-changed', (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.entity === 'band') {
+                    loadBands(appliedQuery, page);
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга SSE-события:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.warn('SSE соединение прервано, браузер переподключится:', err);
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [isOpen, appliedQuery, page, loadBands]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -77,23 +108,23 @@ export default function Special_SubstrSearch({ isOpen, onClose, onOpenModifyForm
         }
 
         setIsSearching(true);
-        setCurrentPage(1);
-        loadBands(searchStr);
+        setPage(0);
+        setAppliedQuery(searchStr.trim());
         toast.success("Поиск выполнен");
     };
 
     const handleResetSearch = () => {
         setSearchStr('');
+        setAppliedQuery('');
         setIsSearching(false);
-        setCurrentPage(1);
-        loadBands('');
+        setPage(0);
     };
 
     const handleDeleteBand = async (id) => {
         if (!window.confirm(`Точно удалить группу с ID ${id}?`)) return;
 
         try {
-            const response = await fetch(`http://localhost:8080/is_lab1/bands/${id}`, {
+            const response = await apiFetch(`/bands/${id}`, {
                 method: 'DELETE',
             });
 
@@ -103,25 +134,19 @@ export default function Special_SubstrSearch({ isOpen, onClose, onOpenModifyForm
             }
 
             toast.success(`Группа с ID ${id} удалена`);
-            setBands(bands.filter(b => b.id !== id));
+            loadBands(appliedQuery, page);
         } catch (error) {
             console.error(error);
             toast.error(error.message);
         }
     };
 
-
-    const totalPages = Math.ceil(bands.length / pageSize) || 1;
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    const currentBands = bands.slice(indexOfFirstItem, indexOfLastItem);
-
     const handleNextPage = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+        if (page + 1 < totalPages) setPage(prev => prev + 1);
     };
 
     const handlePrevPage = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
+        if (page > 0) setPage(prev => prev - 1);
     };
 
     if (!isOpen) return null;
@@ -166,8 +191,8 @@ export default function Special_SubstrSearch({ isOpen, onClose, onOpenModifyForm
                 </tr>
                 </thead>
                 <tbody>
-                {currentBands.length > 0 ? (
-                    currentBands.map((b) => (
+                {bands.length > 0 ? (
+                    bands.map((b) => (
                         <tr key={b.id}>
                             <td>{b.id}</td>
                             <td>{b.name}</td>
@@ -208,13 +233,14 @@ export default function Special_SubstrSearch({ isOpen, onClose, onOpenModifyForm
                 </tbody>
             </table>
 
-
             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                <button type="button" onClick={handlePrevPage} disabled={page <= 0}>
                     Назад
                 </button>
-                <span>Страница {currentPage} из {totalPages}</span>
-                <button onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                <span>
+                    Страница {totalItems === 0 ? 0 : page + 1} из {totalItems === 0 ? 0 : totalPages} (объектов: {totalItems})
+                </span>
+                <button type="button" onClick={handleNextPage} disabled={page + 1 >= totalPages}>
                     Вперед
                 </button>
             </div>

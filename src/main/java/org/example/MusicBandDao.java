@@ -16,35 +16,27 @@ public class MusicBandDao {
     EntityManager em;
 
     public void create(MusicBand mb) {
-        // 1. Лучший альбом
         if (mb.getBestAlbum() != null) {
             if (mb.getBestAlbum().getId() > 0) {
-                // Если выбран существующий по ID — подтягиваем из базы
                 Album album = em.find(Album.class, mb.getBestAlbum().getId());
                 mb.setBestAlbum(album);
             } else {
-                // Если создается новый — сбрасываем ID в 0/null, чтобы Hibernate понял, что это INSERT
-                mb.getBestAlbum().setId(0); // или null, в зависимости от типа поля id в Album
+                mb.getBestAlbum().setId(0);
             }
         }
 
-        // 2. Фронтмен
         if (mb.getFrontMan() != null) {
             if (mb.getFrontMan().getId() > 0) {
-                // Существующий фронтмен по ID
                 Person person = em.find(Person.class, mb.getFrontMan().getId());
                 mb.setFrontMan(person);
             } else {
-                // Новый фронтмен — проверяем его локацию
                 mb.getFrontMan().setId(0);
 
                 if (mb.getFrontMan().getLocation() != null) {
                     if (mb.getFrontMan().getLocation().getId() > 0) {
-                        // Существующая локация по ID
                         Location loc = em.find(Location.class, mb.getFrontMan().getLocation().getId());
                         mb.getFrontMan().setLocation(loc);
                     } else {
-                        // Новая локация — сбрасываем ID
                         mb.getFrontMan().getLocation().setId(0);
                     }
                 }
@@ -105,7 +97,7 @@ public class MusicBandDao {
     }
 
     public List<MusicBand> findAll() {
-        return em.createQuery("SELECT b FROM MusicBand b", MusicBand.class).getResultList();
+        return em.createQuery("SELECT b FROM MusicBand b ORDER BY b.id ASC", MusicBand.class).getResultList();
     }
 
     public void remove(int id) {
@@ -116,9 +108,26 @@ public class MusicBandDao {
     }
 
     public List<MusicBand> findNameSubstr(String str) {
-        return em.createQuery("SELECT b FROM MusicBand b WHERE LOWER(b.name) LIKE LOWER(:searchPattern)")
+        return em.createQuery("SELECT b FROM MusicBand b WHERE LOWER(b.name) LIKE LOWER(:searchPattern) ORDER BY b.id ASC", MusicBand.class)
                 .setParameter("searchPattern", "%" + str + "%")
                 .getResultList();
+    }
+
+    public List<MusicBand> findNameSubstrPage(String str, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+
+        return em.createQuery("SELECT b FROM MusicBand b WHERE LOWER(b.name) LIKE LOWER(:searchPattern) ORDER BY b.id ASC", MusicBand.class)
+                .setParameter("searchPattern", "%" + str + "%")
+                .setFirstResult(safePage * safeSize)
+                .setMaxResults(safeSize)
+                .getResultList();
+    }
+
+    public long countNameSubstr(String str) {
+        return em.createQuery("SELECT COUNT(b) FROM MusicBand b WHERE LOWER(b.name) LIKE LOWER(:searchPattern)", Long.class)
+                .setParameter("searchPattern", "%" + str + "%")
+                .getSingleResult();
     }
 
     public void incrementSingle(int id) {
@@ -134,14 +143,33 @@ public class MusicBandDao {
     }
 
     public List<MusicBand> frontManLowerThan(int number) {
-        return em.createQuery("SELECT b FROM MusicBand b WHERE b.frontMan.id < :number")
-                .setParameter("number", number).getResultList();
+        return em.createQuery("SELECT b FROM MusicBand b WHERE b.frontMan.id < :number ORDER BY b.id ASC", MusicBand.class)
+                .setParameter("number", number)
+                .getResultList();
+    }
+
+    public List<MusicBand> findFrontManLowerThanPage(int number, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+
+        return em.createQuery("SELECT b FROM MusicBand b WHERE b.frontMan.id < :number ORDER BY b.id ASC", MusicBand.class)
+                .setParameter("number", number)
+                .setFirstResult(safePage * safeSize)
+                .setMaxResults(safeSize)
+                .getResultList();
+    }
+
+    public long countFrontManLowerThan(int number) {
+        return em.createQuery("SELECT COUNT(b) FROM MusicBand b WHERE b.frontMan.id < :number", Long.class)
+                .setParameter("number", number)
+                .getSingleResult();
     }
 
     public Long countByAlbumsCount(int count) {
         return em.createQuery("SELECT COUNT(b) FROM MusicBand b WHERE b.albumsCount = :count", Long.class)
                 .setParameter("count", count).getSingleResult();
     }
+
     public List<MusicBand> findPage(int page, int size) {
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, size);

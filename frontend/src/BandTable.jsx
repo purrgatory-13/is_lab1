@@ -1,5 +1,6 @@
 import {toast} from 'react-toastify';
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch, createEventSource } from './api.js';
 
 function formatDate(dateString) {
     if (!dateString) return '';
@@ -49,7 +50,7 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
             params.set('filterValue', appliedFilter.value);
         }
 
-        fetch(`http://localhost:8080/is_lab1/bands?${params.toString()}`)
+        apiFetch(`/bands?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error("Server Error")
@@ -74,7 +75,7 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
     useEffect(() => {
         fetchBands();
 
-        const eventSource = new EventSource('http://localhost:8080/is_lab1/events');
+        const eventSource = createEventSource();
 
         eventSource.addEventListener('entity-changed', (event) => {
             try {
@@ -105,7 +106,7 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
 
         setIsSearching(true);
 
-        fetch(`http://localhost:8080/is_lab1/bands/${searchId}`)
+        apiFetch(`/bands/${searchId}`)
             .then(response => {
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -158,7 +159,7 @@ export default function BandTable({ onNavigate, onOpenAddForm, onOpenModifyForm}
     const handleDeleteBand = (id) => {
         if (!window.confirm(`Точно удалить группу с ID ${id}?`)) return;
 
-        fetch(`http://localhost:8080/is_lab1/bands/${id}`, {
+        apiFetch(`/bands/${id}`, {
             method: 'DELETE',
         })
             .then(async response => {

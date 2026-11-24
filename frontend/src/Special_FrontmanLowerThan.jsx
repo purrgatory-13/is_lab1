@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch, createEventSource } from './api.js';
 
 function formatDate(dateString) {
     if (!dateString) return '';
@@ -23,29 +24,50 @@ function formatDate(dateString) {
 
 export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModifyForm }) {
     const [numberVal, setNumberVal] = useState('');
+    const [appliedNumber, setAppliedNumber] = useState(null);
     const [bands, setBands] = useState([]);
     const [isSearched, setIsSearched] = useState(false);
 
-    const [currentPage, setCurrentPage] = useState(1);
+    const [page, setPage] = useState(0);
     const pageSize = 5;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
-    const performSearch = (num) => {
-        if (num === '' || isNaN(num)) return;
+    const performSearch = useCallback((num, targetPage = 0) => {
+        if (num === null || num === '' || isNaN(num)) return;
 
-        fetch(`http://localhost:8080/is_lab1/bands/frontman-lower/${num}`)
+        const params = new URLSearchParams({
+            page: String(targetPage),
+            size: String(pageSize),
+        });
+
+        apiFetch(`/bands/frontman-lower/${num}?${params.toString()}`)
             .then(response => {
                 if (!response.ok) throw new Error("Ошибка при запросе");
                 return response.json();
             })
             .then(data => {
-                const sorted = [...data].sort((a, b) => a.id - b.id);
-                setBands(sorted);
+                const items = data.items ?? [];
+                if (items.length === 0 && targetPage > 0) {
+                    setPage(prev => Math.max(0, prev - 1));
+                    return;
+                }
+                setBands(items);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems ?? 0);
             })
             .catch(error => {
                 console.error(error);
                 setBands([]);
+                setTotalPages(1);
+                setTotalItems(0);
             });
-    };
+    }, [pageSize]);
+
+    useEffect(() => {
+        if (!isOpen || !isSearched || appliedNumber === null) return;
+        performSearch(appliedNumber, page);
+    }, [isOpen, isSearched, appliedNumber, page, performSearch]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -54,35 +76,57 @@ export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModif
             return;
         }
 
+        const parsedNum = Number(numberVal);
         setIsSearched(true);
-        setCurrentPage(1);
-        performSearch(numberVal);
+        setPage(0);
+        setAppliedNumber(parsedNum);
         toast.success("Поиск выполнен");
     };
 
     const handleReset = () => {
         setNumberVal('');
+        setAppliedNumber(null);
         setIsSearched(false);
         setBands([]);
-        setCurrentPage(1);
+        setPage(0);
+        setTotalPages(1);
+        setTotalItems(0);
     };
 
     useEffect(() => {
-        if (!isOpen || !isSearched || numberVal === '') return;
+        if (!isOpen || !isSearched || appliedNumber === null) return;
 
-        const interval = setInterval(() => {
-            performSearch(numberVal);
-        }, 3000);
+        const eventSource = createEventSource();
 
-        return () => clearInterval(interval);
-    }, [isOpen, isSearched, numberVal]);
+        eventSource.addEventListener('entity-changed', (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload.entity === 'band') {
+                    performSearch(appliedNumber, page);
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга SSE-события:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.warn('SSE соединение прервано, браузер переподключится:', err);
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [isOpen, isSearched, appliedNumber, page, performSearch]);
 
     useEffect(() => {
         if (!isOpen) {
             setNumberVal('');
+            setAppliedNumber(null);
             setBands([]);
             setIsSearched(false);
-            setCurrentPage(1);
+            setPage(0);
+            setTotalPages(1);
+            setTotalItems(0);
         }
     }, [isOpen]);
 
@@ -90,7 +134,7 @@ export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModif
         if (!window.confirm(`Точно удалить группу с ID ${id}?`)) return;
 
         try {
-            const response = await fetch(`http://localhost:8080/is_lab1/bands/${id}`, {
+            const response = await apiFetch(`/bands/${id}`, {
                 method: 'DELETE',
             });
 
@@ -100,24 +144,21 @@ export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModif
             }
 
             toast.success(`Группа с ID ${id} удалена`);
-            setBands(bands.filter(b => b.id !== id));
+            if (appliedNumber !== null) {
+                performSearch(appliedNumber, page);
+            }
         } catch (error) {
             console.error(error);
             toast.error(error.message);
         }
     };
 
-    const totalPages = Math.ceil(bands.length / pageSize) || 1;
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    const currentBands = bands.slice(indexOfFirstItem, indexOfLastItem);
-
     const handleNextPage = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+        if (page + 1 < totalPages) setPage(prev => prev + 1);
     };
 
     const handlePrevPage = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
+        if (page > 0) setPage(prev => prev - 1);
     };
 
     if (!isOpen) return null;
@@ -161,8 +202,8 @@ export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModif
                 </tr>
                 </thead>
                 <tbody>
-                {currentBands.length > 0 ? (
-                    currentBands.map((b) => (
+                {bands.length > 0 ? (
+                    bands.map((b) => (
                         <tr key={b.id}>
                             <td>{b.id}</td>
                             <td>{b.name}</td>
@@ -203,13 +244,15 @@ export default function Special_FrontmanLowerThan({ isOpen, onClose, onOpenModif
                 </tbody>
             </table>
 
-            {bands.length > 0 && (
+            {isSearched && (
                 <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                    <button type="button" onClick={handlePrevPage} disabled={page <= 0}>
                         Назад
                     </button>
-                    <span>Страница {currentPage} из {totalPages}</span>
-                    <button onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                    <span>
+                        Страница {totalItems === 0 ? 0 : page + 1} из {totalItems === 0 ? 0 : totalPages} (объектов: {totalItems})
+                    </span>
+                    <button type="button" onClick={handleNextPage} disabled={page + 1 >= totalPages}>
                         Вперед
                     </button>
                 </div>

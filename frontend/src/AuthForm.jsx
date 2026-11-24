@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch, setToken } from './api.js';
 
 export default function AuthForm({ onLoginSuccess }) {
     const [isLoginMode, setIsLoginMode] = useState(true);
@@ -15,24 +16,36 @@ export default function AuthForm({ onLoginSuccess }) {
 
         const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
 
-        fetch(`http://localhost:8080/is_lab1${endpoint}`, {
+        apiFetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ username, password })
         })
             .then(async res => {
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(errText || "Ошибка авторизации");
+                const rawText = await res.text();
+                let parsed = null;
+                try {
+                    parsed = rawText ? JSON.parse(rawText) : null;
+                } catch (_) {
+                    parsed = null;
                 }
-                return isLoginMode ? res.json() : res.text();
+
+                if (!res.ok) {
+                    const message = parsed?.error || parsed?.message || rawText || "Ошибка авторизации";
+                    throw new Error(message);
+                }
+
+                return parsed ?? rawText;
             })
-            .then(() => {
-                toast.success(isLoginMode ? "Успешный вход!" : "Регистрация успешна! Теперь войдите.");
+            .then((data) => {
                 if (isLoginMode) {
-                    onLoginSuccess(username);
+                    if (data?.token) {
+                        setToken(data.token);
+                    }
+                    toast.success("Успешный вход!");
+                    onLoginSuccess(data?.username || username);
                 } else {
+                    toast.success("Регистрация успешна! Теперь войдите.");
                     setIsLoginMode(true);
                 }
             })

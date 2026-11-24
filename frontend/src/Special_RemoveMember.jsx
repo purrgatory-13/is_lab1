@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch } from './api.js';
 
 export default function Special_RemoveMember({ isOpen, onClose }) {
     const [bandId, setBandId] = useState('');
@@ -18,7 +19,7 @@ export default function Special_RemoveMember({ isOpen, onClose }) {
             return;
         }
 
-        fetch(`http://localhost:8080/is_lab1/bands/${bandId}`)
+        apiFetch(`/bands/${bandId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Группа с таким ID не найдена");
                 return res.json();
@@ -34,7 +35,7 @@ export default function Special_RemoveMember({ isOpen, onClose }) {
 
     const handleConfirm = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/is_lab1/bands/${bandId}/removeMember`, {
+            const res = await apiFetch(`/bands/${bandId}/removeMember`, {
                 method: 'POST',
             });
 

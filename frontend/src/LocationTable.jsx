@@ -1,5 +1,6 @@
 import {toast} from 'react-toastify';
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch, createEventSource } from './api.js';
 
 export default function LocationTable({ onOpenAddLocationForm, onOpenModifyLocationForm }) {
 
@@ -29,7 +30,7 @@ export default function LocationTable({ onOpenAddLocationForm, onOpenModifyLocat
             params.set('filterValue', appliedFilter.value);
         }
 
-        fetch(`http://localhost:8080/is_lab1/locations?${params.toString()}`)
+        apiFetch(`/locations?${params.toString()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error("Server Error");
@@ -54,7 +55,7 @@ export default function LocationTable({ onOpenAddLocationForm, onOpenModifyLocat
     useEffect(() => {
         fetchLocations();
 
-        const eventSource = new EventSource('http://localhost:8080/is_lab1/events');
+        const eventSource = createEventSource();
 
         eventSource.addEventListener('entity-changed', (event) => {
             try {
@@ -85,7 +86,7 @@ export default function LocationTable({ onOpenAddLocationForm, onOpenModifyLocat
 
         setIsSearching(true);
 
-        fetch(`http://localhost:8080/is_lab1/locations/${searchId}`)
+        apiFetch(`/locations/${searchId}`)
             .then(response => {
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -139,7 +140,7 @@ export default function LocationTable({ onOpenAddLocationForm, onOpenModifyLocat
         if (!window.confirm(`Точно удалить локацию с ID ${id}?`)) return;
 
         try {
-            const response = await fetch(`http://localhost:8080/is_lab1/locations/${id}`, {
+            const response = await apiFetch(`/locations/${id}`, {
                 method: 'DELETE',
             });
 

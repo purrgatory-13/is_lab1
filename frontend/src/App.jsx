@@ -18,6 +18,7 @@ import ModifyPersonForm from "./ModifyPersonForm.jsx";
 import Special from "./Special.jsx";
 import AuthForm from './AuthForm.jsx';
 import Susya from './Susya.jsx';
+import { apiFetch, getToken, clearToken } from './api.js';
 
 function App() {
     const [user, setUser] = useState(null);
@@ -31,26 +32,38 @@ function App() {
     const [selectedAlbumId, setSelectedAlbumId] = useState(null);
     const [selectedLocationId, setSelectedLocationId] = useState(null);
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
-
     useEffect(() => {
-        const savedUser = getCookie('username');
-        if (savedUser) {
-            setUser(savedUser);
+        const token = getToken();
+        if (!token) {
+            setUser(null);
+            return;
+        }
+        try {
+            const payloadPart = token.split('.')[1];
+            if (payloadPart) {
+                const payload = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')));
+                if (payload?.sub) {
+                    setUser(payload.sub);
+                }
+            }
+        } catch (_) {
+            clearToken();
+            setUser(null);
         }
     }, []);
 
+    useEffect(() => {
+        const onUnauthorized = () => setUser(null);
+        window.addEventListener('auth:unauthorized', onUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', onUnauthorized);
+    }, []);
+
     const handleLogout = () => {
-        fetch('http://localhost:8080/is_lab1/auth/logout', {
-            method: 'POST',
-            credentials: 'include'
-        }).finally(() => {
-            setUser(null);
-        });
+        apiFetch('/auth/logout', { method: 'POST' })
+            .finally(() => {
+                clearToken();
+                setUser(null);
+            });
     };
 
     if (!user) {

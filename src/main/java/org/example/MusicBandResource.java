@@ -204,13 +204,47 @@ public class MusicBandResource {
 
     @GET
     @Path("/substr/{str}")
-    public List<MusicBand> findSubstr(@PathParam("str") String str) {
-        return mbs.findNameSubstr(str);
+    public Response findSubstr(
+            @PathParam("str") String str,
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("5") int size
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        List<MusicBand> items = mbs.findNameSubstrPage(str, safePage, safeSize);
+        long totalItems = mbs.countNameSubstr(str);
+        int totalPages = (int) Math.ceil((double) totalItems / safeSize);
+
+        return Response.ok(new PageResponse<>(
+                items,
+                safePage,
+                safeSize,
+                totalItems,
+                totalPages
+        )).build();
     }
 
     @GET
     @Path("/frontman-lower/{number}")
-    public List<MusicBand> getFrontManLowerThan(@PathParam("number") int number) {
-        return mbs.frontManLowerThan(number);
+    public Response getFrontManLowerThan(
+            @PathParam("number") int number,
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("5") int size
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+
+        List<MusicBand> items = mbs.findFrontManLowerThanPage(number, safePage, safeSize);
+        long totalItems = mbs.countFrontManLowerThan(number);
+        int totalPages = (int) Math.ceil((double) totalItems / safeSize);
+
+        return Response.ok(new PageResponse<>(
+                items,
+                safePage,
+                safeSize,
+                totalItems,
+                totalPages
+        )).build();
     }
 }

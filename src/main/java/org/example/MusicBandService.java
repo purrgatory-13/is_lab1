@@ -48,8 +48,24 @@ public class MusicBandService {
         return dao.findNameSubstr(str);
     }
 
+    public List<MusicBand> findNameSubstrPage(String str, int page, int size) {
+        return dao.findNameSubstrPage(str, page, size);
+    }
+
+    public long countNameSubstr(String str) {
+        return dao.countNameSubstr(str);
+    }
+
     public List<MusicBand> frontManLowerThan(int number) {
         return dao.frontManLowerThan(number);
+    }
+
+    public List<MusicBand> findFrontManLowerThanPage(int number, int page, int size) {
+        return dao.findFrontManLowerThanPage(number, page, size);
+    }
+
+    public long countFrontManLowerThan(int number) {
+        return dao.countFrontManLowerThan(number);
     }
 
     public Long countByAlbumCount(int count) {

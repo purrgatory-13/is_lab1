@@ -3,9 +3,10 @@ package org.example;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.example.entities.User;
+
+import java.util.Map;
 
 @Path("/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -20,10 +21,12 @@ public class UserResource {
     public Response register(User user) {
         try {
             userService.register(user);
-            return Response.status(Response.Status.CREATED).entity("Регистрация успешна").build();
+            return Response.status(Response.Status.CREATED)
+                    .entity(Map.of("message", "Регистрация успешна"))
+                    .build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage() != null ? e.getMessage() : "Ошибка регистрации")
+                    .entity(Map.of("error", e.getMessage() != null ? e.getMessage() : "Ошибка регистрации"))
                     .build();
         }
     }
@@ -32,20 +35,16 @@ public class UserResource {
     @Path("/login")
     public Response login(User user) {
         try {
-            User loggedIn = userService.login(user.getUsername(), user.getPassword());
-
-            // Создаем куку со сроком жизни, например, 1 день (86400 секунд)
-            NewCookie cookie = new NewCookie.Builder("username")
-                    .value(loggedIn.getUsername())
-                    .path("/")
-                    .maxAge(86400)
-                    .httpOnly(false) // false, чтобы JavaScript на фронте мог ее прочитать при желании
+            String token = userService.login(user.getUsername(), user.getPassword());
+            return Response.ok(Map.of(
+                            "token", token,
+                            "username", user.getUsername()
+                    ))
+                    .header("Authorization", "Bearer " + token)
                     .build();
-
-            return Response.ok(loggedIn).cookie(cookie).build();
         } catch (Exception e) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(e.getMessage() != null ? e.getMessage() : "Ошибка авторизации")
+                    .entity(Map.of("error", e.getMessage() != null ? e.getMessage() : "Ошибка авторизации"))
                     .build();
         }
     }
@@ -53,12 +52,6 @@ public class UserResource {
     @POST
     @Path("/logout")
     public Response logout() {
-        NewCookie cookie = new NewCookie.Builder("username")
-                .value("")
-                .path("/")
-                .maxAge(0)
-                .build();
-
-        return Response.ok("Выход выполнен").cookie(cookie).build();
+        return Response.ok(Map.of("message", "Выход выполнен")).build();
     }
 }

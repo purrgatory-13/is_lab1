@@ -1,5 +1,6 @@
-import {toast} from "react-toastify";
-import {useState, useEffect} from "react";
+import { toast } from "react-toastify";
+import { useState, useEffect } from "react";
+import { apiFetch } from "./api.js";
 
 export default function ModifyAlbumForm({ albumId, onClose }) {
     const [formData, setFormData] = useState({
@@ -8,22 +9,25 @@ export default function ModifyAlbumForm({ albumId, onClose }) {
         sales: ''
     });
 
+    const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!albumId) return;
 
-        fetch(`http://localhost:8080/is_lab1/albums/${albumId}`)
+        setLoading(true);
+        apiFetch(`/albums/${albumId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Не удалось загрузить данные альбома");
                 return res.json();
             })
             .then(data => {
                 setFormData({
-                    name: data.name || '',
-                    tracks: data.tracks ?? '',
-                    sales: data.sales ?? ''
+                    name: data.name ?? '',
+                    tracks: data.tracks != null ? String(data.tracks) : '',
+                    sales: data.sales != null ? String(data.sales) : ''
                 });
+                setErrors({});
                 setLoading(false);
             })
             .catch(err => {
@@ -37,19 +41,72 @@ export default function ModifyAlbumForm({ albumId, onClose }) {
         onClose();
     };
 
+    function blockNonDigitsKeyDown(e) {
+        if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+            e.preventDefault();
+        }
+    }
+
+    function validate(data) {
+        const nextErrors = {};
+
+        if (!data.name || !data.name.trim()) {
+            nextErrors.name = "Поле обязательно: укажите название альбома";
+        }
+
+        const tracksNum = Number(data.tracks);
+        if (data.tracks === '' || !Number.isInteger(tracksNum) || tracksNum <= 0) {
+            nextErrors.tracks = "Поле обязательно: введите целое число треков больше 0";
+        }
+
+        const salesNum = Number(data.sales);
+        if (data.sales === '' || !Number.isInteger(salesNum) || salesNum <= 0) {
+            nextErrors.sales = "Поле обязательно: введите целое число продаж больше 0";
+        }
+
+        return nextErrors;
+    }
+
+    function handleChange(e) {
+        const { name, value } = e.target;
+
+        if (name === 'tracks' || name === 'sales') {
+            if (value !== '' && !/^\d+$/.test(value)) {
+                return;
+            }
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+
+        if (errors[name]) {
+            setErrors(prev => {
+                const copy = { ...prev };
+                delete copy[name];
+                return copy;
+            });
+        }
+    }
+
     const SubmitAlbum = async () => {
+        const validationErrors = validate(formData);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            toast.warn("Проверьте обязательные поля");
+            return;
+        }
+
         try {
             const payload = {
-                name: formData.name,
+                name: formData.name.trim(),
                 tracks: Number(formData.tracks),
                 sales: Number(formData.sales)
             };
 
-            const response = await fetch(`http://localhost:8080/is_lab1/albums/${albumId}`, {
+            const response = await apiFetch(`/albums/${albumId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(payload)
             });
 
@@ -65,53 +122,73 @@ export default function ModifyAlbumForm({ albumId, onClose }) {
         }
     };
 
-    function handleChange(e) {
-        const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value
-        });
-    }
-
     if (loading) {
         return <div>Загрузка данных альбома...</div>;
     }
+
+    const hasErrors = Object.keys(errors).length > 0;
 
     return (
         <div>
             <div className="ModifyFormDiv">
                 <h2>Изменить альбом (ID: {albumId})</h2>
-                <button onClick={CloseForm}>Закрыть</button>
+                <p style={{ fontSize: '13px', color: '#666' }}>
+                    Поля со звёздочкой (<strong>*</strong>) обязательны. В треки и продажи можно ввести только целые числа без знаков и дробей.
+                </p>
+                <button type="button" onClick={CloseForm}>Закрыть</button>
+
                 <div>
-                    <label>Название:</label>
+                    <label>Название <span style={{ color: 'red' }}>*</span>:</label>
                     <input
                         type="text"
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
                     />
+                    {errors.name && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.name}</div>
+                    )}
                 </div>
+
                 <div>
-                    <label>Треки:</label>
+                    <label>Треки <span style={{ color: 'red' }}>*</span>:</label>
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         name="tracks"
                         value={formData.tracks}
+                        onKeyDown={blockNonDigitsKeyDown}
                         onChange={handleChange}
                     />
+                    {errors.tracks && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.tracks}</div>
+                    )}
                 </div>
+
                 <div>
-                    <label>Продажи:</label>
+                    <label>Продажи <span style={{ color: 'red' }}>*</span>:</label>
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         name="sales"
                         value={formData.sales}
+                        onKeyDown={blockNonDigitsKeyDown}
                         onChange={handleChange}
                     />
+                    {errors.sales && (
+                        <div style={{ color: 'crimson', fontSize: '13px' }}>{errors.sales}</div>
+                    )}
                 </div>
             </div>
-            <div>
-                <button onClick={SubmitAlbum}>Подтвердить изменения</button>
+
+            {hasErrors && (
+                <div style={{ color: 'crimson', marginTop: '10px', fontSize: '13px' }}>
+                    Нельзя сохранить изменения, пока есть незаполненные или некорректные поля.
+                </div>
+            )}
+
+            <div style={{ marginTop: '10px' }}>
+                <button type="button" onClick={SubmitAlbum}>Подтвердить изменения</button>
             </div>
         </div>
     );

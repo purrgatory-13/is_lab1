@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiFetch } from './api.js';
 
 export default function AddLocationForm({ onClose }) {
     const [formData, setFormData] = useState({
@@ -31,11 +32,8 @@ export default function AddLocationForm({ onClose }) {
                 name: formData.name || null
             };
 
-            const response = await fetch('http://localhost:8080/is_lab1/locations', {
+            const response = await apiFetch('/locations', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(payload)
             });
 
